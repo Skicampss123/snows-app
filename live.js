@@ -10,17 +10,24 @@
   try{localStorage.removeItem("snows_session")}catch(e){}
   S.user=null;S.camp=null;S.role="Deltager";S.auth="signup";S.vf=null;S.pc=[];
   saveSess=function(){};
-  // Nye camps starter helt tomme: ingen demodata
-  S.instr=[];S.staff=[];S.skilist=[];S.shops=[];S.prog=[];S.ski=[];S.ws=[];S.ev=[];S.pending=[];S.badLog=[];S.news=[];S.parts=[];S.orgs=[];S.ret={};S.log=[];S.grp=[];
-  S.contact={n:"",p:"",e:"",t:""};S.ih={mp:"",pax:[],wait:[]};S.prof={name:"",e:"",boot:"",z:"",camp:""};
-  demoBar=function(){return ""};
+  // Demodata gemmes til demo-kontoen; rigtige camps starter helt tomme
+  const DKEYS=["instr","staff","skilist","shops","prog","ski","ws","ev","pending","badLog","news","parts","orgs","ret","log","grp","contact","ih","prof","sted","lvls","wf","sf"];
+  const DEMO=JSON.parse(JSON.stringify(Object.fromEntries(DKEYS.map(k=>[k,S[k]]))));
+  const DEMO_EMAIL="skicamppppp@voresapp.dk",DEMO_CODE="12341234";
+  function emptyState(){
+    S.instr=[];S.staff=[];S.skilist=[];S.shops=[];S.prog=[];S.ski=[];S.ws=[];S.ev=[];S.pending=[];S.badLog=[];S.news=[];S.parts=[];S.orgs=[];S.ret={};S.log=[];S.grp=[];
+    S.contact={n:"",p:"",e:"",t:""};S.ih={mp:"",pax:[],wait:[]};S.prof={name:"",e:"",boot:"",z:"",camp:""};S.sted={pl:"",lift:"",mp:""};
+    S.lvls=["Alle","Nybegynder","Let øvet","Øvet","Erfaren","Pro"];S.sf={l:"",r:"",b:"",lv:""};S.placeOk=false;
+  }
+  emptyState();
+  const _db=demoBar;demoBar=function(){return S.demo?_db().replace(/<\/div>\s*$/,'<button class="chip" onclick="logout()">Log ud</button></div>'):""};
 
   const errm=e=>(e&&e.message)||"Noget gik galt. Prøv igen.";
   const okMail=e=>/^\S+@\S+\.\S+$/.test(e);
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v6 · 15. nov. 22.10";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v7 · 15. nov. 22.40";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/maxlength="6"/,'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -35,6 +42,7 @@
   loginGo=async function(){
     const e=($("#li_e").value||"").trim().toLowerCase();
     if(!okMail(e)){fail("Skriv en gyldig e-mail.");return}
+    if(e==DEMO_EMAIL){S.vf={mode:"login",e,sent:Date.now(),tries:0,demo:1};S.auth="verify";S.serr="";render();return}
     const m=await sendOtp(e);if(m){fail(m);return}
     S.vf={mode:"login",e,sent:Date.now(),tries:0,live:1};S.auth="verify";S.serr="";render();
   };
@@ -50,6 +58,7 @@
   vfResend=async function(){
     const v=S.vf,w=30-Math.floor((Date.now()-v.sent)/1000);
     if(w>0){fail("Vent "+w+" sekunder, før du kan sende en ny kode.");return}
+    if(v.demo){v.sent=Date.now();v.tries=0;S.serr="";toast("Ny kode sendt til "+v.e);return}
     const m=await sendOtp(v.e);if(m){fail(m);return}
     v.sent=Date.now();v.tries=0;S.serr="";toast("Ny kode sendt til "+v.e);
   };
@@ -57,6 +66,10 @@
   verifyGo=async function(){
     const v=S.vf,c=($("#vf_c").value||"").trim();
     if(v.tries>=5){fail("For mange forkerte forsøg. Send en ny kode.");return}
+    if(v.demo){
+      if(c!==DEMO_CODE){v.tries++;fail(v.tries>=5?"For mange forkerte forsøg. Send en ny kode.":"Koden er forkert eller udløbet. Du har "+(5-v.tries)+" forsøg tilbage.");return}
+      enterDemo();return;
+    }
     if(!/^\d{6,8}$/.test(c)){fail("Skriv koden fra mailen.");return}
     const r=await sb.auth.verifyOtp({email:v.e,token:c,type:"email"});
     if(r.error||!r.data||!r.data.session){v.tries++;fail(v.tries>=5?"For mange forkerte forsøg. Send en ny kode.":"Koden er forkert eller udløbet. Du har "+(5-v.tries)+" forsøg tilbage.");return}
@@ -101,8 +114,13 @@
     }catch(e){S.user=null;S.vf=null;S.auth="login";fail(errm(e))}
   }
 
+  function enterDemo(){
+    DKEYS.forEach(k=>{S[k]=JSON.parse(JSON.stringify(DEMO[k]))});
+    S.demo=true;S.live=false;S.liveUid=null;S.liveCampId=null;S.vf=null;S.auth="login";S.serr="";
+    enter({role:"Arrangør",camp:CAMPN});S.modal=null;render();
+  }
   const _lo=logout;
-  logout=async function(){try{await sb.auth.signOut()}catch(e){}S.pc=[];_lo()};
+  logout=async function(){try{await sb.auth.signOut()}catch(e){}S.pc=[];if(S.demo){S.demo=false;S.live=true;emptyState()}_lo()};
 
   // Gem støvle og Z i databasen
   async function saveProfDb(){
@@ -116,6 +134,7 @@
 
   // Slet min konto
   window.delAcc=async function(){
+    if(S.demo){logout();return}
     if(!confirm("Slet din konto og alle dine data? Det kan ikke fortrydes."))return;
     const r=await sb.rpc("delete_my_account");
     if(r.error){toast("Kontoen kunne ikke slettes: "+errm(r.error));return}
@@ -289,10 +308,12 @@
 
   // Campens navn og kode gemmes også i databasen
   const _sn=saveName;saveName=async function(){
+    if(!S.live){_sn();return}
     const o=S.camp,oc=Object.assign({},CODES);_sn();
     if(S.camp!=o){const r=await sb.from("camps").update({name:S.camp}).eq("id",CID());if(r.error){S.camp=o;Object.keys(CODES).forEach(k=>delete CODES[k]);Object.assign(CODES,oc);CAMPN=o;toast("Navnet kunne ikke gemmes: "+errm(r.error))}}
   };
   const _sc=saveCode;saveCode=async function(){
+    if(!S.live){_sc();return}
     const v=($("#cc2")||{value:""}).value.trim().toUpperCase(),oc=Object.assign({},CODES);_sc();
     if(CODES[v]===S.camp&&!oc[v]){const r=await sb.from("camps").update({code:v}).eq("id",CID());if(r.error){Object.keys(CODES).forEach(k=>delete CODES[k]);Object.assign(CODES,oc);toast(/duplicate|unique/i.test(r.error.message)?"Koden bruges af en anden camp. Vælg en anden.":"Koden kunne ikke gemmes: "+errm(r.error))}}
   };
