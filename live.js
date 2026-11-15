@@ -71,6 +71,7 @@
       const u=(await sb.auth.getUser()).data.user;
       if(!u){S.user=null;S.auth="login";render();return}
       const pl=await sb.rpc("is_platform");
+      if(pl.error){await sb.auth.signOut();S.user=null;S.vf=null;S.auth="login";fail("Databasen mangler Platform-funktionen ("+errm(pl.error)+"). Kør 002_platform.sql i Supabase.");return}
       if(pl.data===true){
         S.user=1;S.role="Platform";S.camp=null;S.tab="plat";S.vf=null;S.serr="";S.setup=false;
         await loadPlatform();return;
