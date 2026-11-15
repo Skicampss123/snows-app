@@ -20,7 +20,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v5 · 15. nov. 21.30";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v6 · 15. nov. 22.10";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/maxlength="6"/,'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -95,6 +95,8 @@
       S.liveUid=u.id;S.liveCampId=pr.camp_id;
       if(pr.camps&&pr.camps.code){CODES[pr.camps.code]=pr.camps.name;CAMPN=pr.camps.name}
       enter({role:pr.role,camp:(pr.camps&&pr.camps.name)||"Camp",who:pr.name,shop:pr.shops&&pr.shops.name});
+      await loadCampData();
+      if(isShop()||isOrg())allocSki(200);
       S.vf=null;S.auth="login";S.modal=null;render();
     }catch(e){S.user=null;S.vf=null;S.auth="login";fail(errm(e))}
   }
@@ -158,6 +160,141 @@
     if(!confirm("Slet campen og alle dens data? Det kan ikke fortrydes."))return;
     const r=await sb.rpc("platform_delete_camp",{p_camp:id});
     S.pok="";S.perr=r.error?errm(r.error):"";await loadPlatform();
+  };
+
+
+  // ───── Data: gem det der indtastes, og hent det til alle i campen ─────
+  const DAYSL=["Man","Tirs","Ons","Tors","Fre","Lør","Søn"];
+  const uid_=()=>(crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c=="x"?r:(r&3|8)).toString(16)}));
+  const idOf=x=>x._id||(x._id=uid_());
+  const CID=()=>S.liveCampId;
+  const hhmm=t=>t?String(t).slice(0,5):"";
+  const shopIdByName=n=>{const x=S.shops.find(z=>z.n==n);return x?idOf(x):null};
+  const emailOfIns=n=>{const i=S.instr.find(z=>z.n==n);if(i&&i.e)return i.e.toLowerCase();return(S.role=="Instruktør"&&n==S.who&&S.prof.e)?S.prof.e.toLowerCase():null};
+  const isOrg=()=>S.role=="Arrangør",isShop=()=>S.role=="Skiforretning",isIns=()=>S.role=="Instruktør";
+  const wsRow=(x,kind)=>{const p=(x.tm||"").split(" ");return {id:idOf(x),camp_id:CID(),title:x.t,kind,level:x.lv||null,day:p[0],start_time:p[1]||null,duration_min:x.dur||120,max_seats:x.max||10,instructor_name:x.ins||null,instructor_email:x.ins?emailOfIns(x.ins):null,recommended_ski:x.sk||null,group_code:x.code||null,meeting_point:x.mp||null,deleted:!!x.gone}};
+  const skiStatus=x=>x.bad=="Skadet"?"skadet":x.bad=="Mistet"?"mistet":x.st=="ude"?"ude":"inde";
+  // Hver samling: hvem må skrive, hvordan rækker bygges, og hvordan de læses tilbage
+  const SPEC=[
+    {n:"levels",tbl:"levels",key:"name",conflict:"camp_id,name",can:()=>isOrg(),
+      rows:()=>S.lvls.slice(1).map((n,i)=>({camp_id:CID(),name:n,sort:i}))},
+    {n:"shops",tbl:"shops",key:"id",can:()=>isOrg()||isShop(),updateOnly:()=>isShop(),
+      rows:()=>S.shops.filter(x=>!isShop()||x.n==S.shop).map(x=>isShop()?{id:idOf(x),return_time:S.ret[x.n]||null}:{id:idOf(x),camp_id:CID(),name:x.n,brands:(x.brands&&x.brands.length)?x.brands:[x.n],return_time:S.ret[x.n]||null})},
+    {n:"shopInv",tbl:"invites",key:"email",conflict:"camp_id,email",can:()=>isOrg(),
+      rows:()=>S.shops.filter(x=>x.e).map(x=>({camp_id:CID(),email:x.e.toLowerCase(),role:"Skiforretning",name:x.n,shop_id:idOf(x)}))},
+    {n:"insInv",tbl:"invites",key:"email",conflict:"camp_id,email",can:()=>isOrg(),
+      rows:()=>S.instr.filter(x=>x.e).map(x=>({camp_id:CID(),email:x.e.toLowerCase(),role:"Instruktør",name:x.n,shop_id:null}))},
+    {n:"prog",tbl:"program_items",key:"id",can:()=>isOrg(),
+      rows:()=>S.prog.map(x=>({id:idOf(x),camp_id:CID(),day:x.d,time:x.tm,time_to:x.to||null,title:x.t,place:x.pl||null}))},
+    {n:"news",tbl:"news",key:"id",can:()=>isOrg(),
+      rows:()=>S.news.map(x=>({id:idOf(x),camp_id:CID(),title:x.t,body:x.x||null,label:x.d||null}))},
+    {n:"ws",tbl:"workshops",key:"id",can:()=>isOrg()||isIns(),
+      rows:()=>S.ws.filter(x=>x.tm&&(!isIns()||x.ins==S.who)).map(x=>wsRow(x,"Workshop"))},
+    {n:"ev",tbl:"workshops",key:"id",can:()=>isOrg(),
+      rows:()=>S.ev.map(x=>({...wsRow({t:x.t,tm:x.tm,max:500},"Event"),id:idOf(x)}))},
+    {n:"skis",tbl:"skis",key:"id",can:()=>isOrg()||isShop(),
+      rows:()=>S.skilist.filter(x=>!x.gone&&x.id&&(!isShop()||x.sh==S.shop)).map(x=>{const sid=shopIdByName(x.sh);return sid?{id:idOf(x),camp_id:CID(),code:x.id,shop_id:sid,brand:x.br,model:x.m,length_cm:+x.l,radius_m:+x.r,width_mm:+x.b,level:x.lv||null,status:skiStatus(x),note:x.badNote||null}:null}).filter(Boolean)}
+  ];
+  let LAST={},META_LAST="",syncT=null,syncBusy=false,errShown=0,backoff=0;
+  const rowJson=r=>JSON.stringify(r);
+  function baseline(){
+    LAST={};SPEC.forEach(sp=>{if(!sp.can())return;const m=new Map();sp.rows().forEach(r=>m.set(r[sp.key],rowJson(r)));LAST[sp.n]=m});
+    META_LAST=isOrg()?JSON.stringify([S.contact,S.sted]):"";
+  }
+  async function syncNow(){
+    if(!S.liveUid||!S.liveCampId||syncBusy)return;
+    if(Date.now()<backoff)return;
+    syncBusy=true;
+    try{
+      for(const sp of SPEC){
+        if(!sp.can())continue;
+        const cur=sp.rows(),prev=LAST[sp.n]||new Map(),next=new Map();
+        cur.forEach(r=>next.set(r[sp.key],rowJson(r)));
+        const ch=cur.filter(r=>prev.get(r[sp.key])!==next.get(r[sp.key]));
+        const gone=[...prev.keys()].filter(k=>!next.has(k));
+        if(ch.length){
+          if(sp.updateOnly&&sp.updateOnly()){
+            for(const r of ch){const {id,...rest}=r;const q=await sb.from(sp.tbl).update(rest).eq("id",id);if(q.error)throw q.error}
+          }else{
+            const q=await sb.from(sp.tbl).upsert(ch,sp.conflict?{onConflict:sp.conflict}:undefined);if(q.error)throw q.error;
+          }
+        }
+        if(gone.length){
+          let q=sb.from(sp.tbl).delete().in(sp.key,gone);if(sp.tbl=="invites")q=q.eq("camp_id",CID());
+          const d=await q;if(d.error)throw d.error;
+        }
+        LAST[sp.n]=next;
+      }
+      if(isOrg()){
+        const mj=JSON.stringify([S.contact,S.sted]);
+        if(mj!==META_LAST){const q=await sb.from("camps").update({contact:S.contact,info:S.sted}).eq("id",CID());if(q.error)throw q.error;META_LAST=mj}
+      }
+      backoff=0;
+      if(S.skiPool&&S.skiPool.length<60&&(isShop()||isOrg()))allocSki(200);
+    }catch(e){
+      backoff=Date.now()+15000;
+      if(Date.now()-errShown>60000){errShown=Date.now();S.toast="Det du har skrevet er ikke gemt endnu: "+errm(e)+" Vi prøver igen.";setTimeout(render,0)}
+    }finally{syncBusy=false}
+  }
+  function scheduleSync(){
+    if(!S.liveUid||!S.liveCampId)return;
+    clearTimeout(syncT);syncT=setTimeout(syncNow,900);
+  }
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="hidden"){clearTimeout(syncT);backoff=0;syncNow()}else if(S.liveUid&&!S.modal&&!isOrg())loadCampData(true)});
+  window.addEventListener("pagehide",()=>{backoff=0;syncNow()});
+  const _r2=render;render=function(){_r2();scheduleSync()};
+
+  // Unikke ski-numre: reserver en blok fra databasen
+  async function allocSki(n){
+    if(S.allocBusy)return;S.allocBusy=true;
+    try{const r=await sb.rpc("allocate_ski_codes",{p_n:n});if(!r.error&&typeof r.data=="number"){S.skiPool=(S.skiPool||[]).concat(Array.from({length:n},(_,i)=>r.data+i))}}finally{S.allocBusy=false}
+  }
+  nextSkiId=function(){
+    if(S.skiPool&&S.skiPool.length)return "SK-"+String(S.skiPool.shift()).padStart(3,"0");
+    return "SK-X"+Math.floor(10000+Math.random()*89999);
+  };
+
+  // Hent campens indhold
+  async function loadCampData(quiet){
+    const cid=S.liveCampId;if(!cid)return;
+    const [camp,lv,sh,pr,nw,ws,sk,inv]=await Promise.all([
+      sb.from("camps").select("name,code,contact,info").eq("id",cid).maybeSingle(),
+      sb.from("levels").select("name,sort").eq("camp_id",cid).order("sort"),
+      sb.from("shops").select("id,name,brands,return_time").eq("camp_id",cid).order("name"),
+      sb.from("program_items").select("*").eq("camp_id",cid),
+      sb.from("news").select("*").eq("camp_id",cid).order("created_at",{ascending:false}),
+      sb.from("workshops").select("*").eq("camp_id",cid).eq("deleted",false),
+      sb.from("skis").select("*").eq("camp_id",cid).order("code"),
+      isOrg()?sb.from("invites").select("email,role,name,shop_id").eq("camp_id",cid):Promise.resolve({data:[]})
+    ]);
+    const bad=[camp,lv,sh,pr,nw,ws,sk,inv].find(x=>x.error);
+    if(bad){if(!quiet)S.toast="Campens indhold kunne ikke hentes: "+errm(bad.error);return}
+    if(camp.data){S.contact=Object.assign({n:"",p:"",e:"",t:""},camp.data.contact||{});S.sted=Object.assign({pl:"",lift:"",mp:""},camp.data.info||{});S.placeOk=!!(S.sted.pl||S.sted.lift||S.sted.mp)}
+    const DEF=["Nybegynder","Let øvet","Øvet","Erfaren","Pro"];
+    S.lvls=["Alle",...((lv.data&&lv.data.length)?lv.data.map(x=>x.name):DEF)];
+    S.shops=(sh.data||[]).map(x=>({_id:x.id,n:x.name,c:"",e:((inv.data||[]).find(i=>i.shop_id==x.id)||{}).email||"",brands:(x.brands&&x.brands.length)?x.brands:undefined}));
+    S.ret={};(sh.data||[]).forEach(x=>{if(x.return_time)S.ret[x.name]=hhmm(x.return_time)});
+    S.instr=(inv.data||[]).filter(i=>i.role=="Instruktør").map(i=>({n:i.name||i.email,c:"",e:i.email}));
+    S.prog=(pr.data||[]).map(x=>({_id:x.id,d:x.day,tm:hhmm(x.time),to:x.time_to?hhmm(x.time_to):undefined,t:x.title,pl:x.place||""}));
+    S.news=(nw.data||[]).map(x=>({_id:x.id,t:x.title,x:x.body||"",d:x.label||""}));
+    const old=new Map((S.ws||[]).map(w=>[w._id,w]));
+    const wl=(ws.data||[]).filter(x=>x.kind!="Event"&&x.day);
+    S.ws=wl.map((x,i)=>{const o=old.get(x.id)||{};return {...o,id:i+1,_id:x.id,t:x.title,lv:x.level||"",tm:x.day+" "+hhmm(x.start_time),dur:x.duration_min,max:x.max_seats,ins:x.instructor_name||"",sk:x.recommended_ski||"",code:x.group_code||undefined,mp:x.meeting_point||"Se programmet",n:o.n||0,en:o.en||0,fav:o.fav||0,pax:o.pax||[],wait:o.wait||[],ro:o.ro||[]}});
+    S.ev=(ws.data||[]).filter(x=>x.kind=="Event"&&x.day).map(x=>({_id:x.id,t:x.title,tm:x.day+" "+hhmm(x.start_time)}));
+    const shopName=id=>{const z=S.shops.find(q=>q._id==id);return z?z.n:""};
+    S.skilist=(sk.data||[]).map(x=>({_id:x.id,id:x.code,sh:shopName(x.shop_id),br:x.brand,m:x.model,l:String(x.length_cm),r:String(x.radius_m),b:String(x.width_mm),lv:x.level||"",st:x.status=="ude"?"ude":"inde",bad:x.status=="skadet"?"Skadet":x.status=="mistet"?"Mistet":null,badNote:x.note||""}));
+    baseline();
+    if(isOrg()&&!(lv.data&&lv.data.length))LAST.levels=new Map();
+  }
+
+  // Campens navn og kode gemmes også i databasen
+  const _sn=saveName;saveName=async function(){
+    const o=S.camp,oc=Object.assign({},CODES);_sn();
+    if(S.camp!=o){const r=await sb.from("camps").update({name:S.camp}).eq("id",CID());if(r.error){S.camp=o;Object.keys(CODES).forEach(k=>delete CODES[k]);Object.assign(CODES,oc);CAMPN=o;toast("Navnet kunne ikke gemmes: "+errm(r.error))}}
+  };
+  const _sc=saveCode;saveCode=async function(){
+    const v=($("#cc2")||{value:""}).value.trim().toUpperCase(),oc=Object.assign({},CODES);_sc();
+    if(CODES[v]===S.camp&&!oc[v]){const r=await sb.from("camps").update({code:v}).eq("id",CID());if(r.error){Object.keys(CODES).forEach(k=>delete CODES[k]);Object.assign(CODES,oc);toast(/duplicate|unique/i.test(r.error.message)?"Koden bruges af en anden camp. Vælg en anden.":"Koden kunne ikke gemmes: "+errm(r.error))}}
   };
 
   // Genskab login ved genindlæsning

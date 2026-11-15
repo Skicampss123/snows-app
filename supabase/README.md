@@ -13,6 +13,9 @@ Authentication → Providers → Email: slå "Confirm email" til, og brug kode i
 Authentication → Emails → Magic Link-skabelonen: skriv `{{ .Token }}` (6 cifre) i teksten.
 Authentication → Settings: OTP expiry = 600 sekunder, OTP length = 6.
 
+## 1b. Opdateringer
+Kør også `003_duration.sql` og `004_content.sql` (i den rækkefølge), efter 001 og 002.
+
 ## 2b. Platform (dig)
 Kør `002_platform.sql`, og tilføj din egen login-e-mail (små bogstaver):
 ```sql
