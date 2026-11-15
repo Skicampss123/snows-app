@@ -26,7 +26,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v8 · 15. nov. 23.30";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v9 · 15. nov. 22.15";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/Bekræft din e-mail/,S.vf&&S.vf.pw?'Skriv dit kodeord':'Bekræft din e-mail').replace(/Vi har sendt en kode til/,S.vf&&S.vf.pw?'Admin-login for':'Vi har sendt en kode til').replace(/maxlength="6"/,S.vf&&S.vf.pw?'maxlength="128" type="password" autocomplete="current-password"':'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -338,6 +338,58 @@
     baseline();
     if(isOrg()&&!(lv.data&&lv.data.length))LAST.levels=new Map();
   }
+
+
+  // ───── Vejr for campens sted (Open-Meteo, ingen nøgle) ─────
+  const WXT={da:{0:"klart",1:"mest sol",2:"let skyet",3:"overskyet",45:"tåge",51:"støvregn",61:"regn",71:"sne",80:"byger",85:"snebyger",95:"torden",wind:"vind",in:"Vejr i",nf:"Vejret kunne ikke findes for stedet. Tjek byen i Sted og praktisk info.",ld:"Henter vejr …",tm:"Næste dage"},
+    en:{0:"clear",1:"mostly sunny",2:"partly cloudy",3:"overcast",45:"fog",51:"drizzle",61:"rain",71:"snow",80:"showers",85:"snow showers",95:"thunderstorm",wind:"wind",in:"Weather in",nf:"Weather not found for this place. Check the town under Place and info.",ld:"Loading weather …",tm:"Next days"},
+    de:{0:"klar",1:"überwiegend sonnig",2:"leicht bewölkt",3:"bedeckt",45:"Nebel",51:"Nieselregen",61:"Regen",71:"Schnee",80:"Schauer",85:"Schneeschauer",95:"Gewitter",wind:"Wind",in:"Wetter in",nf:"Wetter für den Ort nicht gefunden. Prüfe den Ort unter Ort und Info.",ld:"Wetter wird geladen …",tm:"Nächste Tage"}};
+  const wcls=c=>c===0?0:c<=2?1:c==3?3:c<=48?45:c<=57?51:c<=67?61:c<=77?71:c<=82?80:c<=86?85:95;
+  const wico=c=>({0:"☀️",1:"🌤️",3:"☁️",45:"🌫️",51:"🌦️",61:"🌧️",71:"🌨️",80:"🌦️",85:"🌨️",95:"⛈️"}[wcls(c)]||"⛅");
+  const WX={key:"",st:"",d:null,t:0};
+  async function jget(u){const r=await fetch(u);if(!r.ok)throw new Error("http");return r.json()}
+  async function geo(pl){
+    const parts=pl.split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
+    const cand=[pl,...parts.slice().reverse(),...parts.join(" ").split(/\s+/).filter(w=>w.length>2).reverse()];
+    for(const q of cand){
+      const g=await jget("https://geocoding-api.open-meteo.com/v1/search?count=1&language=da&name="+encodeURIComponent(q.replace(/\d+/g,"").trim()||q));
+      if(g.results&&g.results[0])return g.results[0];
+    }
+    return null;
+  }
+  async function loadWx(){
+    const pl=((S.sted||{}).pl||"").trim();
+    if(!pl){WX.key="";WX.d=null;WX.st="";return}
+    if(WX.key==pl&&Date.now()-WX.t<1800000)return;
+    WX.key=pl;WX.t=Date.now();WX.st="ld";
+    try{
+      const g=await geo(pl);
+      if(WX.key!=pl)return;
+      if(!g){WX.st="nf";WX.d=null;render();return}
+      const f=await jget("https://api.open-meteo.com/v1/forecast?latitude="+g.latitude+"&longitude="+g.longitude+"&current=temperature_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&wind_speed_unit=ms&forecast_days=4");
+      if(WX.key!=pl)return;
+      WX.d={name:g.name,f};WX.st="ok";
+    }catch(e){WX.st="nf";WX.d=null;WX.t=Date.now()-1500000}
+    render();
+  }
+  const _stc=stedCards;
+  stedCards=function(){
+    const a=_stc();
+    if(!S.live)return a;
+    loadWx();
+    const T=WXT[S.lang]||WXT.da;
+    if(!((S.sted||{}).pl||"").trim())return a;
+    if(WX.st=="ld")a.unshift(["⛅",T.ld]);
+    else if(WX.st=="nf")a.unshift(["⛅",T.nf]);
+    else if(WX.st=="ok"&&WX.d){
+      const c=WX.d.f.current,d=WX.d.f.daily,loc={da:"da-DK",en:"en-GB",de:"de-DE"}[S.lang]||"da-DK";
+      const days=d.time.slice(1).map((x,i)=>new Date(x).toLocaleDateString(loc,{weekday:"short"})+" "+wico(d.weather_code[i+1])+" "+Math.round(d.temperature_2m_min[i+1])+"/"+Math.round(d.temperature_2m_max[i+1])+"°").join(" · ");
+      a.unshift(["⛅",T.in+" "+WX.d.name+": "+Math.round(c.temperature_2m)+"°, "+T[wcls(c.weather_code)]+", "+T.wind+" "+Math.round(c.wind_speed_10m)+" m/s"],[wico(c.weather_code),T.tm+": "+days]);
+    }
+    return a;
+  };
+  // Nyt sted gemt: hent vejret igen med det samme
+  const _sst=saveSted;saveSted=function(){_sst();WX.key="";render()};
 
   // Campens navn og kode gemmes også i databasen
   const _sn=saveName;saveName=async function(){
