@@ -1,0 +1,26 @@
+# Supabase-opsætning
+
+Projekt: https://ydodczdzuffydnmnxupi.supabase.co (EU-region)
+Offentlig nøgle (må ligge i appen): `sb_publishable_BmFLXIf0FV3AmHp_nWucLg_owNzIcpa`
+Secret key må **aldrig** ligge i appen eller i dette repo.
+
+## 1. Database
+Supabase → SQL Editor → New query → indsæt hele `001_schema.sql` → Run.
+Filen kan køres igen uden at miste data.
+
+## 2. Login med e-mailkode
+Authentication → Providers → Email: slå "Confirm email" til, og brug kode i stedet for link.
+Authentication → Emails → Magic Link-skabelonen: skriv `{{ .Token }}` (6 cifre) i teksten.
+Authentication → Settings: OTP expiry = 600 sekunder, OTP length = 6.
+
+## 3. Første camp (kør i SQL Editor, ret e-mail)
+```sql
+insert into camps(name, code, end_date) values ('Snow’s Sölden 2026', 'SNOW26', '2027-03-31');
+insert into invites(camp_id, email, role, name)
+select id, 'ARRANGOER@EKSEMPEL.DK', 'Arrangør', 'Arrangør' from camps where code='SNOW26';
+```
+Arrangøren logger så ind med sin e-mail og opretter selv butikker, instruktører og hold.
+
+## 4. Automatisk sletning 90 dage efter camp
+Database → Extensions → slå `pg_cron` til, og kør:
+`select cron.schedule('purge-camps','0 3 * * *','select purge_old_camps()');`
