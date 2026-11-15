@@ -205,3 +205,10 @@ begin
     raise notice 'pg_cron er ikke slået til. Slå den til under Database -> Extensions og kør denne fil igen.';
   end if;
 end $$;
+
+-- Hvilke påmindelser der allerede er sendt (så ingen får dem to gange)
+create table if not exists push_sent(
+  key text primary key,
+  created_at timestamptz not null default now()
+);
+alter table push_sent enable row level security;   -- ingen policies: kun serverfunktionerne bruger den
