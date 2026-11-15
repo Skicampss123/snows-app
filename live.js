@@ -16,7 +16,7 @@
   function emptyState(){
     S.instr=[];S.staff=[];S.skilist=[];S.shops=[];S.prog=[];S.ski=[];S.ws=[];S.ev=[];S.pending=[];S.badLog=[];S.news=[];S.parts=[];S.orgs=[];S.ret={};S.log=[];S.grp=[];
     S.contact={n:"",p:"",e:"",t:""};S.ih={mp:"",pax:[],wait:[]};S.prof={name:"",e:"",boot:"",z:"",camp:""};S.sted={pl:"",lift:"",mp:""};
-    S.lvls=["Alle","Nybegynder","Let øvet","Øvet","Erfaren","Pro"];S.sf={l:"",r:"",b:"",lv:""};S.placeOk=false;
+    S.lvls=["Alle","Begynder","Let øvet","Øvet","Pro"];S.sf={l:"",r:"",b:"",lv:""};S.placeOk=false;S.ski=[];S.pending=[];
   }
   emptyState();
   demoBar=function(){return ""};
@@ -26,7 +26,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v10 · 15. nov. 22.45";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v11 · 15. nov. 23.10";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/Bekræft din e-mail/,S.vf&&S.vf.pw?'Skriv dit kodeord':'Bekræft din e-mail').replace(/Vi har sendt en kode til/,S.vf&&S.vf.pw?'Admin-login for':'Vi har sendt en kode til').replace(/maxlength="6"/,S.vf&&S.vf.pw?'maxlength="128" type="password" autocomplete="current-password"':'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -245,7 +245,9 @@
     {n:"ev",tbl:"workshops",key:"id",can:()=>isOrg(),
       rows:()=>S.ev.map(x=>({...wsRow({t:x.t,tm:x.tm,max:500},"Event"),id:idOf(x)}))},
     {n:"skis",tbl:"skis",key:"id",can:()=>isOrg()||isShop(),
-      rows:()=>S.skilist.filter(x=>!x.gone&&x.id&&(!isShop()||x.sh==S.shop)).map(x=>{const sid=shopIdByName(x.sh);return sid?{id:idOf(x),camp_id:CID(),code:x.id,shop_id:sid,brand:x.br,model:x.m,length_cm:+x.l,radius_m:+x.r,width_mm:+x.b,level:x.lv||null,status:skiStatus(x),note:x.badNote||null}:null}).filter(Boolean)}
+      rows:()=>S.skilist.filter(x=>!x.gone&&x.id&&(!isShop()||x.sh==S.shop)).map(x=>{const sid=shopIdByName(x.sh);return sid?{id:idOf(x),camp_id:CID(),code:x.id,shop_id:sid,brand:x.br,model:x.m,length_cm:+x.l,radius_m:+x.r,width_mm:+x.b,level:x.lv||null}:null}).filter(Boolean)},
+    {n:"skiSt",tbl:"skis",key:"id",can:()=>isOrg()||isShop(),updateOnly:()=>true,noDelete:true,fresh:r=>r.status!="inde"||!!r.note,
+      rows:()=>S.skilist.filter(x=>!x.gone&&x.id&&(!isShop()||x.sh==S.shop)&&shopIdByName(x.sh)).map(x=>({id:idOf(x),status:skiStatus(x),note:x.badNote||null}))}
   ];
   let LAST={},META_LAST="",syncT=null,syncBusy=false,errShown=0,backoff=0;
   const rowJson=r=>JSON.stringify(r);
@@ -262,8 +264,9 @@
         if(!sp.can())continue;
         const cur=sp.rows(),prev=LAST[sp.n]||new Map(),next=new Map();
         cur.forEach(r=>next.set(r[sp.key],rowJson(r)));
-        const ch=cur.filter(r=>prev.get(r[sp.key])!==next.get(r[sp.key]));
-        const gone=[...prev.keys()].filter(k=>!next.has(k));
+        let ch=cur.filter(r=>prev.get(r[sp.key])!==next.get(r[sp.key]));
+        if(sp.fresh)ch=ch.filter(r=>prev.has(r[sp.key])||sp.fresh(r));
+        const gone=sp.noDelete?[]:[...prev.keys()].filter(k=>!next.has(k));
         if(ch.length){
           if(sp.updateOnly&&sp.updateOnly()){
             for(const r of ch){const {id,...rest}=r;const q=await sb.from(sp.tbl).update(rest).eq("id",id);if(q.error)throw q.error}
@@ -294,7 +297,7 @@
   }
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="hidden"){clearTimeout(syncT);backoff=0;syncNow()}else if(S.liveUid&&!S.modal&&!isOrg())loadCampData(true)});
   window.addEventListener("pagehide",()=>{backoff=0;syncNow()});
-  const _r2=render;render=function(){_r2();scheduleSync()};
+  const _r2=render;render=function(){_r2();scheduleSync();if(typeof pushRatings==='function')pushRatings()};
 
   // Unikke ski-numre: reserver en blok fra databasen
   async function allocSki(n){
@@ -309,7 +312,7 @@
   // Hent campens indhold
   async function loadCampData(quiet){
     const cid=S.liveCampId;if(!cid)return;
-    const [camp,lv,sh,pr,nw,ws,sk,inv]=await Promise.all([
+    const [camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt]=await Promise.all([
       sb.from("camps").select("name,code,contact,info").eq("id",cid).maybeSingle(),
       sb.from("levels").select("name,sort").eq("camp_id",cid).order("sort"),
       sb.from("shops").select("id,name,brands,return_time").eq("camp_id",cid).order("name"),
@@ -317,12 +320,15 @@
       sb.from("news").select("*").eq("camp_id",cid).order("created_at",{ascending:false}),
       sb.from("workshops").select("*").eq("camp_id",cid).eq("deleted",false),
       sb.from("skis").select("*").eq("camp_id",cid).order("code"),
-      isOrg()?sb.from("invites").select("email,role,name,shop_id").eq("camp_id",cid):Promise.resolve({data:[]})
+      isOrg()?sb.from("invites").select("email,role,name,shop_id").eq("camp_id",cid):Promise.resolve({data:[]}),
+      (isOrg()||isShop())?sb.rpc("ski_borrowers"):Promise.resolve({data:[]}),
+      S.role=="Deltager"?sb.from("loans").select("ski_id,out_at,back_at").eq("user_id",S.liveUid).order("out_at",{ascending:false}):Promise.resolve({data:[]}),
+      S.role=="Deltager"?sb.from("ratings").select("ski_id,stars").eq("user_id",S.liveUid):Promise.resolve({data:[]})
     ]);
-    const bad=[camp,lv,sh,pr,nw,ws,sk,inv].find(x=>x.error);
+    const bad=[camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt].find(x=>x.error);
     if(bad){if(!quiet)S.toast="Campens indhold kunne ikke hentes: "+errm(bad.error);return}
     if(camp.data){S.contact=Object.assign({n:"",p:"",e:"",t:""},camp.data.contact||{});S.sted=Object.assign({pl:"",lift:"",mp:""},camp.data.info||{});S.placeOk=!!(S.sted.pl||S.sted.lift||S.sted.mp)}
-    const DEF=["Nybegynder","Let øvet","Øvet","Erfaren","Pro"];
+    const DEF=["Begynder","Let øvet","Øvet","Pro"];
     S.lvls=["Alle",...((lv.data&&lv.data.length)?lv.data.map(x=>x.name):DEF)];
     S.shops=(sh.data||[]).map(x=>({_id:x.id,n:x.name,c:"",e:((inv.data||[]).find(i=>i.shop_id==x.id)||{}).email||"",brands:(x.brands&&x.brands.length)?x.brands:undefined}));
     S.ret={};(sh.data||[]).forEach(x=>{if(x.return_time)S.ret[x.name]=hhmm(x.return_time)});
@@ -334,7 +340,9 @@
     S.ws=wl.map((x,i)=>{const o=old.get(x.id)||{};return {...o,id:i+1,_id:x.id,t:x.title,lv:x.level||"",tm:x.day+" "+hhmm(x.start_time),dur:x.duration_min,max:x.max_seats,ins:x.instructor_name||"",sk:x.recommended_ski||"",code:x.group_code||undefined,mp:x.meeting_point||"Se programmet",n:o.n||0,en:o.en||0,fav:o.fav||0,pax:o.pax||[],wait:o.wait||[],ro:o.ro||[]}});
     S.ev=(ws.data||[]).filter(x=>x.kind=="Event"&&x.day).map(x=>({_id:x.id,t:x.title,tm:x.day+" "+hhmm(x.start_time)}));
     const shopName=id=>{const z=S.shops.find(q=>q._id==id);return z?z.n:""};
-    S.skilist=(sk.data||[]).map(x=>({_id:x.id,id:x.code,sh:shopName(x.shop_id),br:x.brand,m:x.model,l:String(x.length_cm),r:String(x.radius_m),b:String(x.width_mm),lv:x.level||"",st:x.status=="ude"?"ude":"inde",bad:x.status=="skadet"?"Skadet":x.status=="mistet"?"Mistet":null,badNote:x.note||""}));
+    S.skilist=(sk.data||[]).map(x=>({_id:x.id,id:x.code,sh:shopName(x.shop_id),br:x.brand,m:x.model,l:String(x.length_cm),r:String(x.radius_m),b:String(x.width_mm),lv:x.level||"",st:x.status=="ude"?"ude":"inde",bad:x.status=="skadet"?"Skadet":x.status=="mistet"?"Mistet":null,badNote:x.note||"",by:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).name||"",_hand:!!x.handed_in_at,_lent:x.lent_to}));
+    S.pending=S.skilist.filter(x=>x._hand&&(isOrg()||(isShop()&&x.sh==S.shop)||(S.role=="Deltager"&&x._lent==S.liveUid))).map(x=>x.id);
+    if(S.role=="Deltager"){const rt=new Map((mrt.data||[]).map(q=>[q.ski_id,q.stars]));S.ski=(mln.data||[]).map(l=>{const k=S.skilist.find(z=>z._id==l.ski_id);if(!k)return null;const st=rt.get(l.ski_id)||0;return {id:k.id,_sid:k._id,b:k.br,m:k.m,l:k.l,rad:k.r,w:k.b,st:l.back_at?"ind":"ude",r:st,rsent:st}}).filter(Boolean)}
     baseline();
     if(isOrg()&&!(lv.data&&lv.data.length))LAST.levels=new Map();
   }
@@ -363,6 +371,71 @@
     return head+tile(d.total_loans,"udlån i alt")+tile(stars(d.avg_stars),d.rating_count?"gennemsnit af stjerner ("+d.rating_count+" givet)":"gennemsnit af stjerner (ingen endnu)")+tile(d.damaged,"ski skadet under vejs")+(d.lost?tile(d.lost,"ski mistet"):"")+`<h3>Modeller</h3>${rows||'<div class="mut">Ingen ski oprettet endnu.</div>'}<button class="btn alt" onclick="statsRefresh()">Opdatér</button>`;
   }
   const _vw2=view;view=function(){return S.live&&S.role=="Skiforretning"&&S.tab=="dash"?shopDash():_vw2()};
+
+
+  // ───── Udlån, aflevering og stjerner i databasen ─────
+  const skiByCode=c=>S.skilist.find(x=>String(x.id).toUpperCase()==String(c).toUpperCase()&&!x.gone);
+  scan=function(){if(S.ski.some(k=>k.st=="ude")){toast(t("blocked"));return}S.ierr="";S.modal={ski:1};render()};
+  idGo=async function(){
+    const v=($("#sid").value||"").trim().toUpperCase();
+    if(!v){S.ierr="Skriv ski-ID'et.";render();return}
+    if(!S.online){S.ierr="Du er offline. Prøv igen, når du har forbindelse.";render();return}
+    const q=await sb.rpc("lend_ski",{p_code:v});
+    if(q.error){S.ierr=errm(q.error);render();return}
+    S.modal=null;S.ierr="";await loadCampData(true);toast("Skien er tilføjet ✓");render();
+  };
+  handIn=async function(id){
+    const k=skiByCode(id);if(!k)return;
+    const q=await sb.rpc("hand_in",{p_ski:k._id});
+    if(q.error){toast(errm(q.error));return}
+    await loadCampData(true);render();
+  };
+  done=async function(id){
+    const k=skiByCode(id);if(!k)return;
+    const q=await sb.rpc("return_ski",{p_ski:k._id});
+    if(q.error){toast("Kunne ikke bekræfte afleveringen: "+errm(q.error));return}
+    await loadCampData(true);render();
+  };
+  // Butikken scanner/skriver ID ved aflevering
+  scanReturn=function(){S.ierr="";S.modal={ret:1};render()};
+  window.retGo=async function(){
+    const v=($("#rid").value||"").trim().toUpperCase(),k=skiByCode(v);
+    if(!k||(isShop()&&k.sh!=S.shop)){S.ierr="Vi kan ikke finde en af jeres ski med det ID.";render();return}
+    if(k.st!="ude"){S.ierr="Den ski er ikke udlånt.";render();return}
+    const who=k.by;S.modal=null;S.ierr="";await done(k.id);toast(k.br+" "+k.m+" er afleveret"+(who?" af "+who:"")+" ✓");
+  };
+  const _md=modal;modal=function(){
+    if(S.modal&&S.modal.ret)return `<div class="modal"><div class="card"><h3>Ski afleveret</h3><div class="mut">Skriv ID'et under QR-koden, fx SK-102.</div><input id="rid" placeholder="SK-" autocapitalize="characters">${S.ierr?`<div class="mut" style="color:var(--acc)">${esc(S.ierr)}</div>`:""}<button class="btn" onclick="retGo()">Bekræft aflevering</button><button class="btn alt" onclick="S.modal=null;render()">Annuller</button></div></div>`;
+    return _md();
+  };
+  // Butikkens aflevering: rigtige udlån
+  const _vw3=view;view=function(){
+    if(S.live&&S.role=="Skiforretning"&&S.tab=="shop"){
+      const out=S.skilist.filter(x=>!x.gone&&x.sh==S.shop&&x.st=="ude").sort((a,b)=>(S.pending.includes(b.id)?1:0)-(S.pending.includes(a.id)?1:0));
+      return `<h2>${t("shopTitle")}</h2>${scanRetCard()}<h3>Udlånt lige nu (${out.length})</h3>${out.length?out.map(x=>`<div class="card"><h3>${esc(x.br)} ${esc(x.m)}</h3><div class="mut">${esc(x.id)} · ${x.by?esc(x.by):"ukendt låner"}${S.pending.includes(x.id)?" · <b>melder afleveret</b>":""}</div><button class="btn ${S.pending.includes(x.id)?"ok":"alt"}" onclick="done('${esc(x.id)}')">${t("confirm")}</button></div>`).join(""):`<p class="mut">Ingen af jeres ski er ude.</p>`}${shopRetCard()}`;
+    }
+    return _vw3();
+  };
+  // Stjerner gemmes, når deltageren har trykket
+  let rateBusy=false;
+  async function pushRatings(){
+    if(rateBusy||S.role!="Deltager"||!S.liveUid)return;
+    const k=S.ski.find(x=>x._sid&&x.r>0&&x.rsent!==x.r);if(!k)return;
+    rateBusy=true;
+    const q=await sb.rpc("rate_ski",{p_ski:k._sid,p_stars:k.r});
+    rateBusy=false;
+    if(q.error){toast("Stjernerne blev ikke gemt: "+errm(q.error));k.r=k.rsent||0}else k.rsent=k.r;
+    render();
+  }
+  // Hold tallene friske: hent igen hvert 20. sekund, når intet er under redigering
+  function dirty(){return SPEC.some(sp=>{if(!sp.can())return false;const prev=LAST[sp.n]||new Map();return sp.rows().some(r=>prev.get(r[sp.key])!==rowJson(r))})}
+  const sig=()=>JSON.stringify([S.skilist.map(x=>[x.id,x.st,x.bad,x.by]),S.pending,S.ski.map(x=>[x.id,x.st,x.r]),S.ws.map(x=>x.t),S.news.length,S.prog.length]);
+  setInterval(async()=>{
+    if(document.visibilityState!="visible"||!S.liveUid||!S.liveCampId||S.sup&&false)return;
+    if(S.modal||syncBusy||dirty())return;
+    const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
+    const b=sig();await loadCampData(true);if(sig()!==b)render();
+  },20000);
 
   // ───── Vejr for campens sted (Open-Meteo, ingen nøgle) ─────
   const WXT={da:{0:"klart",1:"mest sol",2:"let skyet",3:"overskyet",45:"tåge",51:"støvregn",61:"regn",71:"sne",80:"byger",85:"snebyger",95:"torden",wind:"vind",in:"Vejr i",nf:"Vejret kunne ikke findes for stedet. Tjek byen i Sted og praktisk info.",ld:"Henter vejr …",tm:"Næste dage"},
