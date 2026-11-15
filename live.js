@@ -10,6 +10,9 @@
   try{localStorage.removeItem("snows_session")}catch(e){}
   S.user=null;S.camp=null;S.role="Deltager";S.auth="signup";S.vf=null;S.pc=[];
   saveSess=function(){};
+  // Nye camps starter helt tomme: ingen demodata
+  S.instr=[];S.staff=[];S.skilist=[];S.shops=[];S.prog=[];S.ski=[];S.ws=[];S.ev=[];S.pending=[];S.badLog=[];S.news=[];S.parts=[];S.orgs=[];S.ret={};S.log=[];S.grp=[];
+  S.contact={n:"",p:"",e:"",t:""};S.ih={mp:"",pax:[],wait:[]};S.prof={name:"",e:"",boot:"",z:"",camp:""};
   demoBar=function(){return ""};
 
   const errm=e=>(e&&e.message)||"Noget gik galt. Prøv igen.";
@@ -17,7 +20,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v3 · 15. nov. 20.55";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v4 · 15. nov. 21.05";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/maxlength="6"/,'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -61,7 +64,7 @@
   };
 
   async function getProfile(uid){
-    const r=await sb.from("profiles").select("id,role,name,email,boot_mm,z_value,shop_id,camp_id,camps(name),shops(name)").eq("id",uid).maybeSingle();
+    const r=await sb.from("profiles").select("id,role,name,email,boot_mm,z_value,shop_id,camp_id,camps(name,code),shops(name)").eq("id",uid).maybeSingle();
     return r.data||null;
   }
 
@@ -90,6 +93,7 @@
       if(!pr){await sb.auth.signOut();S.user=null;S.vf=null;S.auth="login";fail("Kontoen kunne ikke åbnes. Prøv igen.");return}
       S.prof={name:pr.name,e:pr.email,boot:pr.boot_mm?String(pr.boot_mm):"",z:pr.z_value?String(pr.z_value):"",camp:pr.camps&&pr.camps.name};
       S.liveUid=u.id;S.liveCampId=pr.camp_id;
+      if(pr.camps&&pr.camps.code){CODES[pr.camps.code]=pr.camps.name;CAMPN=pr.camps.name}
       enter({role:pr.role,camp:(pr.camps&&pr.camps.name)||"Camp",who:pr.name,shop:pr.shops&&pr.shops.name});
       S.vf=null;S.auth="login";S.modal=null;render();
     }catch(e){S.user=null;S.vf=null;S.auth="login";fail(errm(e))}
