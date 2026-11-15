@@ -26,7 +26,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v12 · 15. nov. 23.40";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v13 · 16. nov. 00.20";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/Bekræft din e-mail/,S.vf&&S.vf.pw?'Skriv dit kodeord':'Bekræft din e-mail').replace(/Vi har sendt en kode til/,S.vf&&S.vf.pw?'Admin-login for':'Vi har sendt en kode til').replace(/maxlength="6"/,S.vf&&S.vf.pw?'maxlength="128" type="password" autocomplete="current-password"':'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -297,7 +297,7 @@
   }
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="hidden"){clearTimeout(syncT);backoff=0;syncNow()}else if(S.liveUid&&!S.modal&&!isOrg())loadCampData(true)});
   window.addEventListener("pagehide",()=>{backoff=0;syncNow()});
-  const _r2=render;render=function(){_r2();scheduleSync();if(typeof pushRatings==='function')pushRatings()};
+  const _r2=render;render=function(){_r2();scheduleSync();if(typeof pushRatings==='function')pushRatings();if(typeof pushChanges==='function')pushChanges()};
 
   // Unikke ski-numre: reserver en blok fra databasen
   async function allocSki(n){
@@ -312,8 +312,8 @@
   // Hent campens indhold
   async function loadCampData(quiet){
     const cid=S.liveCampId;if(!cid)return;
-    const [camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt]=await Promise.all([
-      sb.from("camps").select("name,code,contact,info").eq("id",cid).maybeSingle(),
+    const [camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt,wcn,wen,wfv,ros]=await Promise.all([
+      sb.from("camps").select("name,code,contact,info,start_date,tz").eq("id",cid).maybeSingle(),
       sb.from("levels").select("name,sort").eq("camp_id",cid).order("sort"),
       sb.from("shops").select("id,name,brands,return_time").eq("camp_id",cid).order("name"),
       sb.from("program_items").select("*").eq("camp_id",cid),
@@ -323,11 +323,15 @@
       isOrg()?sb.from("invites").select("email,role,name,shop_id").eq("camp_id",cid):Promise.resolve({data:[]}),
       (isOrg()||isShop())?sb.rpc("ski_borrowers"):Promise.resolve({data:[]}),
       S.role=="Deltager"?sb.from("loans").select("ski_id,out_at,back_at").eq("user_id",S.liveUid).order("out_at",{ascending:false}):Promise.resolve({data:[]}),
-      S.role=="Deltager"?sb.from("ratings").select("ski_id,stars").eq("user_id",S.liveUid):Promise.resolve({data:[]})
+      S.role=="Deltager"?sb.from("ratings").select("ski_id,stars").eq("user_id",S.liveUid):Promise.resolve({data:[]}),
+      sb.rpc("ws_counts"),
+      S.role=="Deltager"?sb.from("enrollments").select("workshop_id,group_code,extra_names").eq("user_id",S.liveUid):Promise.resolve({data:[]}),
+      S.role=="Deltager"?sb.from("ws_favorites").select("workshop_id").eq("user_id",S.liveUid):Promise.resolve({data:[]}),
+      (S.role=="Instruktør"||isOrg())?sb.from("roster").select("workshop_id,user_id,name,checked_in,no_show,extra_names"):Promise.resolve({data:[]})
     ]);
-    const bad=[camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt].find(x=>x.error);
+    const bad=[camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt,wcn,wen,wfv,ros].find(x=>x.error);
     if(bad){if(!quiet)S.toast="Campens indhold kunne ikke hentes: "+errm(bad.error);return}
-    if(camp.data){S.contact=Object.assign({n:"",p:"",e:"",t:""},camp.data.contact||{});S.sted=Object.assign({pl:"",lift:"",mp:""},camp.data.info||{});S.placeOk=!!(S.sted.pl||S.sted.lift||S.sted.mp)}
+    if(camp.data){S.campStart=camp.data.start_date||null;S.tz=camp.data.tz||"Europe/Vienna";applyDN();S.contact=Object.assign({n:"",p:"",e:"",t:""},camp.data.contact||{});S.sted=Object.assign({pl:"",lift:"",mp:""},camp.data.info||{});S.placeOk=!!(S.sted.pl||S.sted.lift||S.sted.mp)}
     const DEF=["Begynder","Let øvet","Øvet","Pro"];
     S.lvls=["Alle",...((lv.data&&lv.data.length)?lv.data.map(x=>x.name):DEF)];
     S.shops=(sh.data||[]).map(x=>({_id:x.id,n:x.name,c:"",e:((inv.data||[]).find(i=>i.shop_id==x.id)||{}).email||"",brands:(x.brands&&x.brands.length)?x.brands:undefined}));
@@ -335,9 +339,11 @@
     S.instr=(inv.data||[]).filter(i=>i.role=="Instruktør").map(i=>({n:i.name||i.email,c:"",e:i.email}));
     S.prog=(pr.data||[]).map(x=>({_id:x.id,d:x.day,tm:hhmm(x.time),to:x.time_to?hhmm(x.time_to):undefined,t:x.title,pl:x.place||""}));
     S.news=(nw.data||[]).map(x=>({_id:x.id,t:x.title,x:x.body||"",d:x.label||""}));
-    const old=new Map((S.ws||[]).map(w=>[w._id,w]));
+    const cnt=new Map((wcn.data||[]).map(x=>[x.workshop_id,x.taken])),mine=new Map((wen.data||[]).map(x=>[x.workshop_id,x])),fav=new Set((wfv.data||[]).map(x=>x.workshop_id));
     const wl=(ws.data||[]).filter(x=>x.kind!="Event"&&x.day);
-    S.ws=wl.map((x,i)=>{const o=old.get(x.id)||{};return {...o,id:i+1,_id:x.id,t:x.title,lv:x.level||"",tm:x.day+" "+hhmm(x.start_time),dur:x.duration_min,max:x.max_seats,ins:x.instructor_name||"",sk:x.recommended_ski||"",code:x.group_code||undefined,mp:x.meeting_point||"Se programmet",n:o.n||0,en:o.en||0,fav:o.fav||0,pax:o.pax||[],wait:o.wait||[],ro:o.ro||[]}});
+    S.ws=wl.map((x,i)=>{const m=mine.get(x.id),ex=(m&&m.extra_names)||[];
+      const pax=(ros.data||[]).filter(p=>p.workshop_id==x.id).map(p=>{const st=p.no_show?"no":p.checked_in?"in":"";return {n:p.name+((p.extra_names||[]).length?" + "+p.extra_names.join(", "):""),x:(p.extra_names||[]).length,st,_uid:p.user_id,_sst:st}});
+      return {id:i+1,_id:x.id,t:x.title,lv:x.level||"",tm:x.day+" "+hhmm(x.start_time),ts:x.starts_at?Date.parse(x.starts_at):null,dur:x.duration_min,max:x.max_seats,ins:x.instructor_name||"",sk:x.recommended_ski||"",code:(m&&m.group_code)||x.group_code||undefined,mp:x.meeting_point||"Se programmet",n:cnt.get(x.id)||0,en:m?1:0,gs:m?1+ex.length:0,gn:ex,fav:fav.has(x.id)?1:0,_fsent:fav.has(x.id)?1:0,pax,wait:[],ro:[]}});
     S.ev=(ws.data||[]).filter(x=>x.kind=="Event"&&x.day).map(x=>({_id:x.id,t:x.title,tm:x.day+" "+hhmm(x.start_time)}));
     const shopName=id=>{const z=S.shops.find(q=>q._id==id);return z?z.n:""};
     S.skilist=(sk.data||[]).map(x=>({_id:x.id,id:x.code,sh:shopName(x.shop_id),br:x.brand,m:x.model,l:String(x.length_cm),r:String(x.radius_m),b:String(x.width_mm),lv:x.level||"",st:x.status=="ude"?"ude":"inde",bad:x.status=="skadet"?"Skadet":x.status=="mistet"?"Mistet":null,badNote:x.note||"",by:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).name||"",_hand:!!x.handed_in_at,_lent:x.lent_to}));
@@ -345,6 +351,7 @@
     if(S.role=="Deltager"){const rt=new Map((mrt.data||[]).map(q=>[q.ski_id,q.stars]));S.ski=(mln.data||[]).map(l=>{const k=S.skilist.find(z=>z._id==l.ski_id);if(!k)return null;const st=rt.get(l.ski_id)||0;return {id:k.id,_sid:k._id,b:k.br,m:k.m,l:k.l,rad:k.r,w:k.b,st:l.back_at?"ind":"ude",r:st,rsent:st}}).filter(Boolean)}
     baseline();
     if(isOrg()&&!(lv.data&&lv.data.length))LAST.levels=new Map();
+    saveSnap();tickNow();
   }
 
 
@@ -434,8 +441,13 @@
   const codeOf_=t=>{const m=String(t||"").toUpperCase().match(/SK-[A-Z0-9]+/);return m?m[0]:String(t||"").trim().toUpperCase()};
   async function lendCode(v){
     if(!v){S.ierr="Skriv ski-ID'et.";render();return false}
-    if(!S.online){S.ierr="Du er offline. Prøv igen, når du har forbindelse.";render();return false}
-    const q=await sb.rpc("lend_ski",{p_code:v});
+    let q;
+    if(!navigator.onLine)q={error:{message:"Failed to fetch"}};else{try{q=await sb.rpc("lend_ski",{p_code:v})}catch(e){q={error:{message:"Failed to fetch"}}}}
+    if(q.error&&isNet(q.error)){
+      const k=skiByCode(v);
+      if(!k||k.st!="inde"||k.bad){S.ierr="Du er offline, og vi kan ikke se, om skien er ledig. Prøv igen med forbindelse.";S.modal={ski:1};render();return false}
+      enqueue("lend_ski",{p_code:v});k.st="ude";S.ski.unshift({id:k.id,_sid:k._id,b:k.br,m:k.m,l:k.l,rad:k.r,w:k.b,st:"ude",r:0,pend:1});S.modal=null;S.ierr="";toast("Gemt. Sendes, når du har forbindelse.");render();return true;
+    }
     if(q.error){S.ierr=errm(q.error);S.modal={ski:1};render();return false}
     S.modal=null;S.ierr="";await loadCampData(true);toast("Skien er tilføjet ✓");render();return true;
   }
@@ -443,14 +455,16 @@
   scan=function(){if(S.ski.some(k=>k.st=="ude")){toast(t("blocked"));return}S.ierr="";camOpen("lend")};
   handIn=async function(id){
     const k=skiByCode(id);if(!k)return;
-    const q=await sb.rpc("hand_in",{p_ski:k._id});
+    const q=await rpcQ("hand_in",{p_ski:k._id},"hi"+k._id);
     if(q.error){toast(errm(q.error));return}
+    if(q.queued){S.pending.push(k.id);const m=S.ski.find(z=>z.id==k.id);if(m)m.pend=1;render();return}
     await loadCampData(true);render();
   };
   done=async function(id){
     const k=skiByCode(id);if(!k)return;
-    const q=await sb.rpc("return_ski",{p_ski:k._id});
+    const q=await rpcQ("return_ski",{p_ski:k._id},"rt"+k._id);
     if(q.error){toast("Kunne ikke bekræfte afleveringen: "+errm(q.error));return}
+    if(q.queued){k.st="inde";k.by="";S.pending=S.pending.filter(x=>x!=k.id);render();return}
     await loadCampData(true);render();
   };
   // Butikken scanner/skriver ID ved aflevering
@@ -480,7 +494,7 @@
     if(rateBusy||S.role!="Deltager"||!S.liveUid)return;
     const k=S.ski.find(x=>x._sid&&x.r>0&&x.rsent!==x.r);if(!k)return;
     rateBusy=true;
-    const q=await sb.rpc("rate_ski",{p_ski:k._sid,p_stars:k.r});
+    const q=await rpcQ("rate_ski",{p_ski:k._sid,p_stars:k.r},"rate"+k._sid);
     rateBusy=false;
     if(q.error){toast("Stjernerne blev ikke gemt: "+errm(q.error));k.r=k.rsent||0}else k.rsent=k.r;
     render();
@@ -492,8 +506,155 @@
     if(document.visibilityState!="visible"||!S.liveUid||!S.liveCampId||S.sup&&false)return;
     if(S.modal||syncBusy||dirty())return;
     const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
-    const b=sig();await loadCampData(true);if(sig()!==b)render();
+    await flushQ();
+    const b=sig();await loadCampData(true);if(sig()!==b)render();saveSnap();
   },20000);
+
+
+  // ───── Kø til handlinger uden dækning ─────
+  const QK=()=>"snows_q_"+(S.liveUid||"x");
+  const qLoad=()=>{try{return JSON.parse(localStorage.getItem(QK())||"[]")}catch(e){return[]}};
+  const qSave=q=>{try{localStorage.setItem(QK(),JSON.stringify(q))}catch(e){}};
+  const isNet=e=>!e||/fetch|network|load failed|timeout/i.test(e.message||"")||e.status===0;
+  function enqueue(fn,args,key){
+    const q=qLoad().filter(x=>!(key&&x.key==key));q.push({fn,args,key:key||null,t:Date.now()});qSave(q);
+  }
+  // Kør nu, eller læg i kø hvis nettet er væk. Forretningsfejl (fx "Holdet er fuldt") returneres.
+  async function rpcQ(fn,args,key){
+    if(!navigator.onLine){enqueue(fn,args,key);return{queued:1}}
+    try{
+      const r=await sb.rpc(fn,args);
+      if(r.error){if(isNet(r.error)){enqueue(fn,args,key);return{queued:1}}return{error:r.error}}
+      return{ok:1,data:r.data};
+    }catch(e){enqueue(fn,args,key);return{queued:1}}
+  }
+  let flushing=false;
+  async function flushQ(){
+    if(flushing||!S.liveUid||!navigator.onLine)return;
+    let q=qLoad();if(!q.length)return;
+    flushing=true;S.syncing=true;render();
+    const errs=[];
+    try{
+      while(q.length){
+        const it=q[0];let r;
+        try{r=await sb.rpc(it.fn,it.args)}catch(e){break}
+        if(r.error&&isNet(r.error))break;
+        if(r.error)errs.push(errm(r.error));
+        q.shift();qSave(q);
+      }
+    }finally{flushing=false;S.syncing=false}
+    if(errs.length)S.toast="Nogle handlinger kunne ikke gennemføres: "+errs[0];
+    await loadCampData(true);render();
+  }
+  const setOnline=()=>{S.online=navigator.onLine;render();if(S.online)flushQ()};
+  window.addEventListener("online",setOnline);window.addEventListener("offline",setOnline);
+  S.online=navigator.onLine;
+
+  // ───── Gem kopi til offline brug ─────
+  const SNK=()=>"snows_snap_"+(S.liveUid||"x");
+  const SNAP=["skilist","ws","prog","news","shops","instr","contact","sted","lvls","ski","pending","ret","prof"];
+  function saveSnap(){
+    if(!S.liveUid||S.sup)return;
+    try{const o={role:S.role,camp:S.camp,who:S.who,shop:S.shop,campId:S.liveCampId,campStart:S.campStart,tz:S.tz,t:Date.now(),state:{}};SNAP.forEach(k=>o.state[k]=S[k]);localStorage.setItem(SNK(),JSON.stringify(o))}catch(e){}
+  }
+  function restoreSnap(uid){
+    try{
+      const o=JSON.parse(localStorage.getItem("snows_snap_"+uid)||"null");if(!o||!o.role)return false;
+      S.liveUid=uid;S.liveCampId=o.campId;SNAP.forEach(k=>{if(o.state[k]!==undefined)S[k]=o.state[k]});S.campStart=o.campStart;S.tz=o.tz;applyDN();
+      enter({role:o.role,camp:o.camp,who:o.who,shop:o.shop});S.setup=false;S.online=false;S.vf=null;S.auth="login";render();return true;
+    }catch(e){return false}
+  }
+
+  // ───── Rigtige datoer og klokken i campens tidszone ─────
+  const WD={Mon:"Man",Tue:"Tirs",Wed:"Ons",Thu:"Tors",Fri:"Fre",Sat:"Lør",Sun:"Søn"};
+  const tzParts=(ms,tz)=>{const o={};new Intl.DateTimeFormat("en-GB",{timeZone:tz||"Europe/Vienna",weekday:"short",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date(ms)).forEach(p=>o[p.type]=p.value);if(o.hour=="24")o.hour="00";return o};
+  const tzOff=(ms,tz)=>{const p=tzParts(ms,tz);return Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute)-Math.floor(ms/60000)*60000};
+  const tzMidnight=(ms,tz)=>{const p=tzParts(ms,tz),g=Date.UTC(+p.year,+p.month-1,+p.day);return g-tzOff(g,tz)};
+  function tickNow(){
+    const p=tzParts(Date.now(),S.tz),d=WD[p.weekday]||"Man",tm=p.hour+":"+p.minute;
+    if(!S.now||S.now.d!=d||S.now.tm!=tm){S.now={d,tm};return true}return false;
+  }
+  const DNB={Man:"Mandag",Tirs:"Tirsdag",Ons:"Onsdag",Tors:"Torsdag",Fre:"Fredag",Lør:"Lørdag",Søn:"Søndag"},DOW={Man:1,Tirs:2,Ons:3,Tors:4,Fre:5,Lør:6,Søn:0};
+  const MON=["jan.","feb.","mar.","apr.","maj","jun.","jul.","aug.","sep.","okt.","nov.","dec."];
+  function dayDate(d){
+    if(!S.campStart)return null;
+    const b=new Date(S.campStart+"T12:00:00Z"),add=(DOW[d]-b.getUTCDay()+7)%7;b.setUTCDate(b.getUTCDate()+add);return b;
+  }
+  function applyDN(){
+    Object.keys(DNB).forEach(d=>{const x=dayDate(d);DN[d]=DNB[d]+(x?" "+x.getUTCDate()+". "+MON[x.getUTCMonth()]:"")});
+  }
+  applyDN();
+  setInterval(()=>{if(S.liveUid&&tickNow()){const a=document.activeElement;if(!S.modal&&!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)))render()}},20000);
+
+  // Tilmelding: åbner 08:00 samme dag, lukker 10 min før start. Holdet er låst, når det er fuldt.
+  enrBtn=function(w){
+    if(!w.ts)return `<div class="mut" style="margin-top:8px">Dato er ikke lagt ind endnu</div>`;
+    const now=Date.now();
+    if(now>w.ts-600000)return `<div class="mut" style="margin-top:8px">Tilmelding er lukket</div>`;
+    const open=tzMidnight(w.ts,S.tz)+8*3600000;
+    if(now<open)return `<div class="mut" style="margin-top:8px">🔒 Tilmelding åbner ${DN[w.tm.split(" ")[0]].toLowerCase()} kl. 08:00</div>`;
+    const c=clash(w);if(c)return `<div class="mut" style="margin-top:8px">Du er allerede tilmeldt "${esc(c.t)}" på samme tidspunkt.</div>`;
+    if(w.n>=w.max)return `<div class="mut" style="margin-top:8px">🔒 Holdet er fuldt og låst</div>`;
+    return `<button class="btn" onclick="openGrp(${w.id-1})">${t("enroll")}</button>`;
+  };
+  const _md2=modal;modal=function(){
+    const h=_md2();
+    return typeof h=="string"?h.replace(/<h3 style="margin-top:18px">Har du en gruppekode\?<\/h3><input id="gc"[^>]*>/,"").replace(/<button class="btn alt" onclick="joinCode\(\)">[^<]*<\/button>/,""):h;
+  };
+
+  // ───── Workshops: tilmelding, afmelding, favoritter, tjek ind ─────
+  const _enr0=enr;
+  enr=async function(i,v,sz){
+    const w=S.ws[i];if(!w)return;
+    if(v==1){
+      const names=(w.gn||[]).slice(),grp=names.length?(w.code||("GRP-"+Math.floor(1000+Math.random()*9000))):null;w.code=grp||undefined;
+      if(!navigator.onLine){_enr0(i,1,sz);w.pend=1;enqueue("enroll",{p_ws:w._id,p_group:grp,p_extra:names},"enr"+w._id);render();return}
+      const q=await sb.rpc("enroll",{p_ws:w._id,p_group:grp,p_extra:names});
+      if(q.error){if(isNet(q.error)){_enr0(i,1,sz);w.pend=1;enqueue("enroll",{p_ws:w._id,p_group:grp,p_extra:names},"enr"+w._id);render();return}toast(errm(q.error));await loadCampData(true);render();return}
+      await loadCampData(true);render();toast("Du er tilmeldt ✓");
+    }else{
+      _enr0(i,0,sz);
+      const q=await rpcQ("cancel_enrollment",{p_ws:w._id},"enr"+w._id);
+      if(q.error){toast(errm(q.error))}
+      await loadCampData(true);render();
+    }
+  };
+  grpGo=function(){
+    const i=S.modal.g,w=S.ws[i],names=S.grp.map(x=>x.trim()).filter(Boolean),sz=1+names.length;
+    if(w.n+sz>w.max){S.gerr=w.n>=w.max?"Holdet er fuldt.":"Holdet har kun "+(w.max-w.n)+" ledige pladser. Fjern nogle fra gruppen.";render();return}
+    w.gn=names;w.code=sz>1?"GRP-"+Math.floor(1000+Math.random()*9000):undefined;S.modal=null;enr(i,1,sz);
+  };
+  // Favoritter og tjek ind: ændringer i visningen sendes videre
+  let pushBusy=false;
+  async function pushChanges(){
+    if(pushBusy||!S.liveUid||S.sup&&false)return;
+    pushBusy=true;
+    try{
+      if(S.role=="Deltager"){
+        for(const w of S.ws){if(w._id&&(w.fav?1:0)!==(w._fsent?1:0)){w._fsent=w.fav?1:0;await rpcQ("set_ws_fav",{p_ws:w._id,p_on:!!w.fav},"fav"+w._id)}}
+      }
+      if(S.role=="Instruktør"||isOrg()){
+        for(const w of S.ws){for(const p of (w.pax||[])){
+          if(!p._uid||p.st===p._sst)continue;
+          const nx=p.st;p._sst=nx;
+          const q=nx=="no"?await rpcQ("mark_no_show",{p_ws:w._id,p_user:p._uid,p_flag:true},"ci"+w._id+p._uid):await rpcQ("check_in",{p_ws:w._id,p_user:p._uid,p_in:nx=="in"},"ci"+w._id+p._uid);
+          if(q.error)toast(errm(q.error));
+        }}
+      }
+    }finally{pushBusy=false}
+  }
+
+  // Campens startdato (så hold og program får rigtige datoer)
+  window.saveStart=async function(){
+    const d=($("#cs_d")||{}).value||null;
+    const q=await sb.from("camps").update({start_date:d}).eq("id",S.liveCampId);
+    if(q.error){toast("Datoen kunne ikke gemmes: "+errm(q.error));return}
+    S.campStart=d;applyDN();await loadCampData(true);toast("Startdato gemt ✓");render();
+  };
+  const _admc=ADM.camp;ADM.camp=function(){
+    const miss=!S.campStart;
+    return _admc()+`<div class="card" ${miss?'style="border-color:var(--acc)"':""}><h3>Campens første dag</h3><div class="mut">${miss?"Mangler. Uden den kan deltagerne ikke tilmelde sig hold.":"Bruges til datoer på hold og program."}</div><input id="cs_d" type="date" value="${esc(S.campStart||"")}"><button class="btn" onclick="saveStart()">Gem første dag</button></div>`;
+  };
 
   // ───── Vejr for campens sted (Open-Meteo, ingen nøgle) ─────
   const WXT={da:{0:"klart",1:"mest sol",2:"let skyet",3:"overskyet",45:"tåge",51:"støvregn",61:"regn",71:"sne",80:"byger",85:"snebyger",95:"torden",wind:"vind",in:"Vejr i",nf:"Vejret kunne ikke findes for stedet. Tjek byen i Sted og praktisk info.",ld:"Henter vejr …",tm:"Næste dage"},
@@ -559,6 +720,6 @@
   };
 
   // Genskab login ved genindlæsning
-  sb.auth.getSession().then(r=>{if(r.data&&r.data.session)afterLogin({mode:"restore"});else render()});
+  sb.auth.getSession().then(r=>{if(r.data&&r.data.session){if(!navigator.onLine&&restoreSnap(r.data.session.user.id))return;afterLogin({mode:"restore"}).then(()=>flushQ())}else render()});
   render();
 })();
