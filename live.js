@@ -26,7 +26,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v15 · 16. nov. 01.40";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v16 · 16. nov.";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/Bekræft din e-mail/,S.vf&&S.vf.pw?'Skriv dit kodeord':'Bekræft din e-mail').replace(/Vi har sendt en kode til/,S.vf&&S.vf.pw?'Admin-login for':'Vi har sendt en kode til').replace(/maxlength="6"/,S.vf&&S.vf.pw?'maxlength="128" type="password" autocomplete="current-password"':'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -490,12 +490,13 @@
     return _vw3();
   };
   // Stjerner gemmes, når deltageren har trykket
+  window.rateGo=function(){const n=S.rt||0;if(!n){toast(tr("Vælg antal stjerner"));return}const k=S.ski[S.modal];k.r=n;k.rc=(document.getElementById("rc")||{}).value||S.rc||"";if(!S.online)k.pend=1;S.modal=null;S.rt=0;S.rc="";render()};
   let rateBusy=false;
   async function pushRatings(){
     if(rateBusy||S.role!="Deltager"||!S.liveUid)return;
     const k=S.ski.find(x=>x._sid&&x.r>0&&x.rsent!==x.r);if(!k)return;
     rateBusy=true;
-    const q=await rpcQ("rate_ski",{p_ski:k._sid,p_stars:k.r},"rate"+k._sid);
+    const q=await rpcQ("rate_ski",{p_ski:k._sid,p_stars:k.r,p_comment:(k.rc||"").trim()||null},"rate"+k._sid);
     rateBusy=false;
     if(q.error){toast("Stjernerne blev ikke gemt: "+errm(q.error));k.r=k.rsent||0}else k.rsent=k.r;
     render();
@@ -698,36 +699,7 @@
   };
 
   // ───── Juridisk: privatlivspolitik og vilkår (udkast – skal gennemlæses og udfyldes) ─────
-  const LEGAL={name:"[Udfyldes: virksomhedens navn]",cvr:"[Udfyldes: CVR]",email:"[Udfyldes: kontakt-e-mail]"};
-  const LT={
-    da:{priv:"Privatlivspolitik",terms:"Vilkår",close:"Luk",
-      p:[["Hvem er ansvarlig","Appen drives af "+LEGAL.name+" (CVR "+LEGAL.cvr+"). Kontakt: "+LEGAL.email+"."],
-      ["Hvilke oplysninger vi gemmer","Navn og e-mail. Støvlelængde og Z-værdi, hvis du udfylder dem. Hvilke hold du er tilmeldt og om du er tjekket ind. Hvilke ski du har lånt og de stjerner, du giver. Hvis du slår beskeder til, gemmes en teknisk adresse til din enhed."],
-      ["Hvorfor","For at du kan bruge campen: tilmelde dig hold, låne og aflevere ski og få beskeder. Grundlaget er dit samtykke og aftalen om at deltage."],
-      ["Hvem kan se hvad","Arrangøren ser dit navn, din e-mail, dit udstyr og dine tilmeldinger. Skibutikkerne ser dit navn, når du har lånt deres ski, og stjerner pr. ski. Instruktøren ser navnene på dem, der er på instruktørens hold. Andre deltagere ser ikke dine oplysninger. Dine stjerner kan kun ses af arrangør og butikker."],
-      ["Hvor længe","Alt slettes automatisk 90 dage efter campens slutning."],
-      ["Dine rettigheder","Du kan hente dine data og slette din konto under Profil. Du kan også bede om indsigt, rettelse eller sletning ved at skrive til os. Du kan klage til Datatilsynet (datatilsynet.dk)."],
-      ["Databehandlere","Data opbevares i EU hos Supabase. Hjemmesiden hostes af GitHub Pages, og e-mails med log-ind-koder sendes via Resend."]],
-     t:[["Brug af ski","Du bruger de lånte ski på eget ansvar. Aflever dem til den aftalte tid i den butik, du lånte dem i."],["Skader og tab","Skader og mistede ski håndteres efter butikkens og arrangørens regler. [Udfyldes: regler for erstatning]"],["Instruktører","Følg instruktørernes anvisninger og bjergets regler. Nødnummer i Østrig: 112."],["Appen","Appen leveres som den er, uden garanti for, at den altid er tilgængelig."]]},
-    en:{priv:"Privacy policy",terms:"Terms",close:"Close",
-      p:[["Who is responsible","The app is run by "+LEGAL.name+" (company no. "+LEGAL.cvr+"). Contact: "+LEGAL.email+"."],
-      ["What we store","Name and email. Boot length and Z value if you enter them. Which workshops you joined and whether you checked in. Which skis you borrowed and the stars you give. If you turn on notifications, a technical address for your device is stored."],
-      ["Why","So you can use the camp: join workshops, borrow and return skis and get messages. The basis is your consent and the agreement to take part."],
-      ["Who sees what","The organizer sees your name, email, equipment and sign-ups. Ski shops see your name when you borrowed their skis, and the stars per ski. The instructor sees the names of those on their workshop. Other participants do not see your details. Your stars are only visible to the organizer and the shops."],
-      ["How long","Everything is deleted automatically 90 days after the camp ends."],
-      ["Your rights","You can download your data and delete your account under Profile. You can also ask for access, correction or deletion by writing to us. You can complain to the Danish Data Protection Agency (datatilsynet.dk)."],
-      ["Processors","Data is stored in the EU with Supabase. The site is hosted by GitHub Pages, and login code emails are sent via Resend."]],
-     t:[["Using the skis","You use the borrowed skis at your own risk. Return them on time to the shop you borrowed them from."],["Damage and loss","Damage and lost skis are handled under the shop's and organizer's rules. [To be filled in: compensation rules]"],["Instructors","Follow the instructors' directions and the mountain rules. Emergency number in Austria: 112."],["The app","The app is provided as is, without a guarantee that it is always available."]]},
-    de:{priv:"Datenschutzerklärung",terms:"Bedingungen",close:"Schließen",
-      p:[["Verantwortlicher","Die App wird betrieben von "+LEGAL.name+" (Firmen-Nr. "+LEGAL.cvr+"). Kontakt: "+LEGAL.email+"."],
-      ["Was wir speichern","Name und E-Mail. Schuhlänge und Z-Wert, wenn du sie angibst. Für welche Workshops du angemeldet bist und ob du eingecheckt bist. Welche Ski du geliehen hast und die Sterne, die du vergibst. Wenn du Mitteilungen aktivierst, wird eine technische Adresse deines Geräts gespeichert."],
-      ["Warum","Damit du das Camp nutzen kannst: Workshops buchen, Ski leihen und zurückgeben und Mitteilungen erhalten. Grundlage sind deine Einwilligung und die Vereinbarung zur Teilnahme."],
-      ["Wer sieht was","Der Veranstalter sieht deinen Namen, deine E-Mail, deine Ausrüstung und deine Anmeldungen. Skishops sehen deinen Namen, wenn du ihre Ski geliehen hast, und die Sterne pro Ski. Der Instruktor sieht die Namen der Teilnehmenden seines Workshops. Andere Teilnehmende sehen deine Daten nicht. Deine Sterne sind nur für Veranstalter und Shops sichtbar."],
-      ["Wie lange","Alles wird 90 Tage nach Ende des Camps automatisch gelöscht."],
-      ["Deine Rechte","Du kannst deine Daten unter Profil herunterladen und dein Konto löschen. Du kannst auch Auskunft, Berichtigung oder Löschung per Nachricht an uns verlangen. Du kannst dich bei der dänischen Datenschutzbehörde beschweren (datatilsynet.dk)."],
-      ["Auftragsverarbeiter","Die Daten werden in der EU bei Supabase gespeichert. Die Website wird von GitHub Pages gehostet, Login-Codes werden über Resend gesendet."]],
-     t:[["Nutzung der Ski","Du nutzt die geliehenen Ski auf eigene Verantwortung. Gib sie pünktlich im Shop zurück, bei dem du sie geliehen hast."],["Schäden und Verlust","Schäden und verlorene Ski werden nach den Regeln des Shops und des Veranstalters behandelt. [Auszufüllen: Regeln zum Schadenersatz]"],["Instruktoren","Folge den Anweisungen der Instruktoren und den Bergregeln. Notruf in Österreich: 112."],["Die App","Die App wird wie besehen bereitgestellt, ohne Garantie für ständige Verfügbarkeit."]]}
-  };
+  const LEGAL=window.LEGAL,LT=window.LT;
   window.openLegal=k=>{S.modal={legal:k};render()};
   const _md3=modal;modal=function(){
     if(S.modal&&S.modal.legal){
@@ -794,7 +766,7 @@
   async function rq(fn){const q=await sb.rpc(fn);if(q.error)throw q.error;return q.data||[]}
   EXPS.Deltagere=async()=>[["Navn","E-mail","Støvlelængde (mm)","Z-værdi"],...(await rq("export_participants")).map(p=>[p.name,p.email,p.boot_mm==null?"":+p.boot_mm,p.z_value==null?"":+p.z_value])];
   EXPS.Tilmeldinger=async()=>[["Hold","Dag","Start","Deltager","Medbragte","Tjekket ind","Mødte ikke op"],...(await rq("export_enrollments")).map(e=>[e.workshop,e.day,String(e.start_time||"").slice(0,5),e.participant,e.extra_names||"",e.checked_in?"Ja":"",e.no_show?"Ja":""])];
-  EXPS.Udlån=async()=>[["Ski-ID","Mærke","Model","Butik","Låner","Udlånt","Afleveret","Stjerner"],...(await rq("export_loans")).map(l=>[l.ski_code,l.brand,l.model,l.shop,l.borrower||"",fdt(l.out_at),fdt(l.back_at),l.stars==null?"":l.stars])];
+  EXPS.Udlån=async()=>[["Ski-ID","Mærke","Model","Butik","Låner","Udlånt","Afleveret","Stjerner","Kommentar"],...(await rq("export_loans")).map(l=>[l.ski_code,l.brand,l.model,l.shop,l.borrower||"",fdt(l.out_at),fdt(l.back_at),l.stars==null?"":l.stars,l.comment||""])];
   EXPS.Stjerner=async()=>{
     const m=new Map();(await rq("export_loans")).forEach(l=>{const k=l.brand+" "+l.model,o=m.get(k)||{loans:0,n:0,sum:0};o.loans++;if(l.stars){o.n++;o.sum+=l.stars}m.set(k,o)});
     return [["Model","Udlån","Bedømmelser","Gennemsnit af stjerner"],...[...m].sort((a,b)=>b[1].loans-a[1].loans).map(([k,o])=>[k,o.loans,o.n,o.n?Math.round(o.sum/o.n*10)/10:""])];
@@ -883,6 +855,57 @@
     const v=($("#cc2")||{value:""}).value.trim().toUpperCase(),oc=Object.assign({},CODES);_sc();
     if(CODES[v]===S.camp&&!oc[v]){const r=await sb.from("camps").update({code:v}).eq("id",CID());if(r.error){Object.keys(CODES).forEach(k=>delete CODES[k]);Object.assign(CODES,oc);toast(/duplicate|unique/i.test(r.error.message)?"Koden bruges af en anden camp. Vælg en anden.":"Koden kunne ikke gemmes: "+errm(r.error))}}
   };
+
+  // ───── Fejllog: telefonerne melder uventede fejl til platformen ─────
+  (function(){
+    const seen=new Set();let n=0;
+    function rep(msg,place,stack){
+      try{if(!S.live||!sb||!S.liveUid||n>=5)return;msg=String(msg||"").slice(0,300);const k=msg+place;if(seen.has(k))return;seen.add(k);n++;
+        sb.rpc("log_client_error",{p_msg:msg,p_place:String(place||"").slice(0,200),p_stack:String(stack||"").slice(0,1500),p_ua:navigator.userAgent.slice(0,180),p_ver:VER.slice(0,30)}).then(()=>{},()=>{})}catch(e){}
+    }
+    window.addEventListener("error",e=>rep(e.message,(e.filename||"")+":"+e.lineno,e.error&&e.error.stack));
+    window.addEventListener("unhandledrejection",e=>{const r=e.reason;rep(r&&r.message||r,"promise",r&&r.stack)});
+  })();
+  window.errLoad=async function(){S.perrs=null;S.perrMsg="Henter …";render();const r=await sb.rpc("platform_errors",{p_limit:100});if(r.error){S.perrMsg=errm(r.error);S.perrs=[]}else{S.perrs=r.data||[];S.perrMsg=""}render()};
+  window.errClear=async function(){const r=await sb.rpc("platform_clear_errors");if(r.error){toast(errm(r.error));return}S.perrs=[];render()};
+  const _pv=platView;platView=function(){
+    const h=_pv();
+    const card=`<div class="card"><h3>Fejllog</h3><div class="mut">Uventede fejl fra deltagernes og butikkernes telefoner (de seneste 30 dage).</div>${S.perrMsg?`<div class="mut">${esc(S.perrMsg)}</div>`:""}${(S.perrs||[]).length?`<div style="max-height:320px;overflow:auto">${S.perrs.map(e=>`<div class="mut" style="border-top:1px solid var(--line,#ddd);padding:6px 0"><b>${esc(e.msg)}</b><br>${new Date(e.created_at).toLocaleString("da-DK")} · ${esc(e.camp||"–")} · ${esc(e.role||"–")} · ${esc(e.ver||"")}<br>${esc(e.place||"")}</div>`).join("")}</div><button class="btn alt" onclick="errClear()">Ryd loggen</button>`:(S.perrs?`<div class="mut">Ingen fejl 🎉</div>`:"")}<button class="btn alt" onclick="errLoad()">Vis fejllog</button></div>`;
+    const i=h.lastIndexOf('<button class="btn alt" onclick="platRefresh()">');
+    return i<0?h+card:h.slice(0,i)+card+h.slice(i);
+  };
+  // ───── Historik pr. ski og kommentarer ─────
+  const _sr=skiRow;skiRow=function(s,i){
+    let h=_sr(s,i);
+    if(S.live&&(S.role=="Skiforretning"||S.role=="Arrangør")){h=h.replace('<button class="chip" onclick="S.modal={q1:',`<button class="chip" onclick="skiHist(${i})">🕘 Historik</button><button class="chip" onclick="lendOpen(${i})">Udlån til…</button><button class="chip" onclick="S.modal={q1:`)}
+    return h;
+  };
+  window.skiHist=async function(i){const x=S.skilist[i];S.modal={hist:i,rows:null,err:""};render();const r=await sb.rpc("ski_history",{p_ski:idOf(x)});if(!S.modal||S.modal.hist!==i)return;if(r.error)S.modal.err=errm(r.error);S.modal.rows=r.data||[];render()};
+  const dt=v=>v?new Date(v).toLocaleString("da-DK",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+  window.cmOpen=async function(){S.modal={cm:1,rows:null,err:""};render();const r=await sb.rpc("ski_comments");if(!S.modal||!S.modal.cm)return;if(r.error)S.modal.err=errm(r.error);S.modal.rows=r.data||[];render()};
+  // ───── Manuel tilmelding og udlån ─────
+  let FQ=0;
+  window.findGo=function(q){S.modal.q=q;const my=++FQ;if((q||"").trim().length<2){S.modal.res=[];render();return}
+    sb.rpc("find_participants",{p_q:q}).then(r=>{if(my!==FQ||!S.modal)return;S.modal.res=r.data||[];S.modal.ferr=r.error?errm(r.error):"";render();const e=document.getElementById("fq");if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length)}})};
+  window.lendOpen=function(i){S.modal={lend:i,q:"",res:[]};render()};
+  window.lendDo=async function(i,uid){const x=S.skilist[i];const r=await sb.rpc("org_lend",{p_ski:idOf(x),p_user:uid});if(r.error){toast(errm(r.error));return}S.modal=null;await loadCampData(true);toast("Skien er udlånt ✓")};
+  window.euOpen=function(i){S.modal={eu:i,q:"",res:[]};render()};
+  window.euAdd=async function(i,uid){const w=S.ws[i];const r=await sb.rpc("org_enroll",{p_ws:w._id,p_user:uid,p_extra:[],p_force:false});if(r.error){toast(errm(r.error));return}S.modal={eu:i,q:"",res:[]};await loadCampData(true);S.modal={eu:i,q:"",res:[]};render();toast("Deltageren er tilmeldt ✓")};
+  window.euDel=async function(i,uid){if(!confirm(tr("Fjern deltageren fra holdet?")))return;const w=S.ws[i];const r=await sb.rpc("org_unenroll",{p_ws:w._id,p_user:uid});if(r.error){toast(errm(r.error));return}await loadCampData(true);S.modal={eu:i,q:"",res:[]};render();toast("Deltageren er fjernet ✓")};
+  const srch=(go)=>`<input id="fq" placeholder="${tr("Søg på navn")}" value="${esc(S.modal.q||"")}" oninput="findGo(this.value)" autocomplete="off">${S.modal.ferr?`<div class="mut" style="color:var(--acc)">${esc(S.modal.ferr)}</div>`:""}`;
+  const _md4=modal;modal=function(){
+    const m=S.modal;
+    if(m&&m.hist!=null){const x=S.skilist[m.hist];
+      return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>${esc(x.br+" "+x.m)} · ${esc(x.id||"")}</h3><div class="mut">${tr("Historik")}</div>${m.err?`<div class="mut" style="color:var(--acc)">${esc(m.err)}</div>`:""}${m.rows==null?`<div class="mut">${tr("Henter …")}</div>`:(m.rows.length?m.rows.map(r=>`<div style="border-top:1px solid var(--line,#ddd);padding:8px 0"><b>${esc(r.borrower||"–")}</b><div class="mut">${tr("Ud")} ${dt(r.out_at)} · ${r.back_at?tr("Tilbage")+" "+dt(r.back_at):tr("Stadig ude")}</div>${r.stars?`<div style="color:var(--acc)">${"★".repeat(r.stars)}${"☆".repeat(5-r.stars)}</div>`:""}${r.comment?`<div class="mut">“${esc(r.comment)}”</div>`:""}</div>`).join(""):`<div class="mut">${tr("Ingen udlån endnu.")}</div>`)}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
+    if(m&&m.cm){return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>${tr("Kommentarer til skiene")}</h3>${m.err?`<div class="mut" style="color:var(--acc)">${esc(m.err)}</div>`:""}${m.rows==null?`<div class="mut">${tr("Henter …")}</div>`:(m.rows.length?m.rows.map(r=>`<div style="border-top:1px solid var(--line,#ddd);padding:8px 0"><b>${esc(r.brand+" "+r.model)}</b> <span style="color:var(--acc)">${"★".repeat(r.stars)}</span><div class="mut">“${esc(r.comment)}”</div></div>`).join(""):`<div class="mut">${tr("Ingen kommentarer endnu.")}</div>`)}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
+    if(m&&m.lend!=null){const x=S.skilist[m.lend];
+      return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>${tr("Udlån")} ${esc(x.br+" "+x.m)}</h3><div class="mut">${esc(x.id||"")} · ${tr("Find deltageren")}</div>${srch()}${(m.res||[]).map(p=>`<div class="row" style="align-items:center;padding:6px 0"><span>${esc(p.name)}${p.email?`<div class="mut">${esc(p.email)}</div>`:""}</span><button class="chip" onclick="lendDo(${m.lend},'${p.id}')">${tr("Udlån")}</button></div>`).join("")}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
+    if(m&&m.eu!=null){const w=S.ws[m.eu];
+      return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>${esc(w.t)}</h3><div class="mut">${w.tm} · ${w.n}/${w.max} ${tr("pladser")}</div>${(w.pax||[]).map(p=>`<div class="row" style="align-items:center;padding:4px 0"><span>${esc(p.n)}</span><button class="chip" onclick="euDel(${m.eu},'${p._uid}')">${tr("Fjern")}</button></div>`).join("")||`<div class="mut">${tr("Ingen tilmeldte")}</div>`}<h3 style="margin-top:14px">${tr("Tilmeld en deltager")}</h3>${srch()}${(m.res||[]).map(p=>`<div class="row" style="align-items:center;padding:6px 0"><span>${esc(p.name)}${p.email?`<div class="mut">${esc(p.email)}</div>`:""}</span><button class="chip" onclick="euAdd(${m.eu},'${p.id}')">${tr("Tilmeld")}</button></div>`).join("")}<div class="mut">${tr("Arrangøren kan tilmelde uanset tidspunkt, men holdet må ikke være fuldt.")}</div><button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
+    return _md4();
+  };
+  // Kommentarer på butikkens overblik og et felt hos arrangøren
+  const _sd=shopDash;shopDash=function(){const h=_sd();return h+`<button class="btn alt" onclick="cmOpen()">💬 ${tr("Se kommentarer")}</button>`};
 
   // Genskab login ved genindlæsning
   sb.auth.getSession().then(r=>{if(r.data&&r.data.session){if(!navigator.onLine&&restoreSnap(r.data.session.user.id))return;afterLogin({mode:"restore"}).then(()=>flushQ())}else render()});

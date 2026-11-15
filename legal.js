@@ -1,0 +1,31 @@
+// Juridiske tekster. Ret [Udfyldes …] herunder og få teksterne gennemset af en jurist, før appen åbnes for rigtige deltagere.
+window.LEGAL={name:"[Udfyldes: virksomhedens navn]",cvr:"[Udfyldes: CVR]",email:"[Udfyldes: kontakt-e-mail]"};
+window.LT={
+  da:{priv:"Privatlivspolitik",terms:"Vilkår",close:"Luk",
+    p:[["Hvem er ansvarlig","Appen drives af "+LEGAL.name+" (CVR "+LEGAL.cvr+"). Kontakt: "+LEGAL.email+"."],
+    ["Hvilke oplysninger vi gemmer","Navn og e-mail. Støvlelængde og Z-værdi, hvis du udfylder dem. Hvilke hold du er tilmeldt og om du er tjekket ind. Hvilke ski du har lånt og de stjerner, du giver. Hvis du slår beskeder til, gemmes en teknisk adresse til din enhed."],
+    ["Hvorfor","For at du kan bruge campen: tilmelde dig hold, låne og aflevere ski og få beskeder. Grundlaget er dit samtykke og aftalen om at deltage."],
+    ["Hvem kan se hvad","Arrangøren ser dit navn, din e-mail, dit udstyr og dine tilmeldinger. Skibutikkerne ser dit navn, når du har lånt deres ski, og stjerner pr. ski. Instruktøren ser navnene på dem, der er på instruktørens hold. Andre deltagere ser ikke dine oplysninger. Dine stjerner kan kun ses af arrangør og butikker."],
+    ["Hvor længe","Alt slettes automatisk 90 dage efter campens slutning."],
+    ["Dine rettigheder","Du kan hente dine data og slette din konto under Profil. Du kan også bede om indsigt, rettelse eller sletning ved at skrive til os. Du kan klage til Datatilsynet (datatilsynet.dk)."],
+    ["Databehandlere","Data opbevares i EU hos Supabase. Hjemmesiden hostes af GitHub Pages, og e-mails med log-ind-koder sendes via Resend."]],
+   t:[["Brug af ski","Du bruger de lånte ski på eget ansvar. Aflever dem til den aftalte tid i den butik, du lånte dem i."],["Skader og tab","Skader og mistede ski håndteres efter butikkens og arrangørens regler. [Udfyldes: regler for erstatning]"],["Instruktører","Følg instruktørernes anvisninger og bjergets regler. Nødnummer i Østrig: 112."],["Appen","Appen leveres som den er, uden garanti for, at den altid er tilgængelig."]]},
+  en:{priv:"Privacy policy",terms:"Terms",close:"Close",
+    p:[["Who is responsible","The app is run by "+LEGAL.name+" (company no. "+LEGAL.cvr+"). Contact: "+LEGAL.email+"."],
+    ["What we store","Name and email. Boot length and Z value if you enter them. Which workshops you joined and whether you checked in. Which skis you borrowed and the stars you give. If you turn on notifications, a technical address for your device is stored."],
+    ["Why","So you can use the camp: join workshops, borrow and return skis and get messages. The basis is your consent and the agreement to take part."],
+    ["Who sees what","The organizer sees your name, email, equipment and sign-ups. Ski shops see your name when you borrowed their skis, and the stars per ski. The instructor sees the names of those on their workshop. Other participants do not see your details. Your stars are only visible to the organizer and the shops."],
+    ["How long","Everything is deleted automatically 90 days after the camp ends."],
+    ["Your rights","You can download your data and delete your account under Profile. You can also ask for access, correction or deletion by writing to us. You can complain to the Danish Data Protection Agency (datatilsynet.dk)."],
+    ["Processors","Data is stored in the EU with Supabase. The site is hosted by GitHub Pages, and login code emails are sent via Resend."]],
+   t:[["Using the skis","You use the borrowed skis at your own risk. Return them on time to the shop you borrowed them from."],["Damage and loss","Damage and lost skis are handled under the shop's and organizer's rules. [To be filled in: compensation rules]"],["Instructors","Follow the instructors' directions and the mountain rules. Emergency number in Austria: 112."],["The app","The app is provided as is, without a guarantee that it is always available."]]},
+  de:{priv:"Datenschutzerklärung",terms:"Bedingungen",close:"Schließen",
+    p:[["Verantwortlicher","Die App wird betrieben von "+LEGAL.name+" (Firmen-Nr. "+LEGAL.cvr+"). Kontakt: "+LEGAL.email+"."],
+    ["Was wir speichern","Name und E-Mail. Schuhlänge und Z-Wert, wenn du sie angibst. Für welche Workshops du angemeldet bist und ob du eingecheckt bist. Welche Ski du geliehen hast und die Sterne, die du vergibst. Wenn du Mitteilungen aktivierst, wird eine technische Adresse deines Geräts gespeichert."],
+    ["Warum","Damit du das Camp nutzen kannst: Workshops buchen, Ski leihen und zurückgeben und Mitteilungen erhalten. Grundlage sind deine Einwilligung und die Vereinbarung zur Teilnahme."],
+    ["Wer sieht was","Der Veranstalter sieht deinen Namen, deine E-Mail, deine Ausrüstung und deine Anmeldungen. Skishops sehen deinen Namen, wenn du ihre Ski geliehen hast, und die Sterne pro Ski. Der Instruktor sieht die Namen der Teilnehmenden seines Workshops. Andere Teilnehmende sehen deine Daten nicht. Deine Sterne sind nur für Veranstalter und Shops sichtbar."],
+    ["Wie lange","Alles wird 90 Tage nach Ende des Camps automatisch gelöscht."],
+    ["Deine Rechte","Du kannst deine Daten unter Profil herunterladen und dein Konto löschen. Du kannst auch Auskunft, Berichtigung oder Löschung per Nachricht an uns verlangen. Du kannst dich bei der dänischen Datenschutzbehörde beschweren (datatilsynet.dk)."],
+    ["Auftragsverarbeiter","Die Daten werden in der EU bei Supabase gespeichert. Die Website wird von GitHub Pages gehostet, Login-Codes werden über Resend gesendet."]],
+   t:[["Nutzung der Ski","Du nutzt die geliehenen Ski auf eigene Verantwortung. Gib sie pünktlich im Shop zurück, bei dem du sie geliehen hast."],["Schäden und Verlust","Schäden und verlorene Ski werden nach den Regeln des Shops und des Veranstalters behandelt. [Auszufüllen: Regeln zum Schadenersatz]"],["Instruktoren","Folge den Anweisungen der Instruktoren und den Bergregeln. Notruf in Österreich: 112."],["Die App","Die App wird wie besehen bereitgestellt, ohne Garantie für ständige Verfügbarkeit."]]}
+};
