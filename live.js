@@ -10,25 +10,24 @@
   try{localStorage.removeItem("snows_session")}catch(e){}
   S.user=null;S.camp=null;S.role="Deltager";S.auth="signup";S.vf=null;S.pc=[];
   saveSess=function(){};
-  // Demodata gemmes til demo-kontoen; rigtige camps starter helt tomme
+  // Rigtige camps starter helt tomme
   const DKEYS=["instr","staff","skilist","shops","prog","ski","ws","ev","pending","badLog","news","parts","orgs","ret","log","grp","contact","ih","prof","sted","lvls","wf","sf"];
-  const DEMO=JSON.parse(JSON.stringify(Object.fromEntries(DKEYS.map(k=>[k,S[k]]))));
-  const DEMO_EMAIL="skicamppppp@voresapp.dk",DEMO_CODE="12341234";
+  const ADMIN_EMAIL="skicamppppp@voresapp.dk"; // rigtig admin-konto: kodeordet står kun i Supabase, aldrig her
   function emptyState(){
     S.instr=[];S.staff=[];S.skilist=[];S.shops=[];S.prog=[];S.ski=[];S.ws=[];S.ev=[];S.pending=[];S.badLog=[];S.news=[];S.parts=[];S.orgs=[];S.ret={};S.log=[];S.grp=[];
     S.contact={n:"",p:"",e:"",t:""};S.ih={mp:"",pax:[],wait:[]};S.prof={name:"",e:"",boot:"",z:"",camp:""};S.sted={pl:"",lift:"",mp:""};
     S.lvls=["Alle","Nybegynder","Let øvet","Øvet","Erfaren","Pro"];S.sf={l:"",r:"",b:"",lv:""};S.placeOk=false;
   }
   emptyState();
-  const _db=demoBar;demoBar=function(){return S.demo?_db().replace(/<\/div>\s*$/,'<button class="chip" onclick="logout()">Log ud</button></div>'):""};
+  demoBar=function(){return ""};
 
   const errm=e=>(e&&e.message)||"Noget gik galt. Prøv igen.";
   const okMail=e=>/^\S+@\S+\.\S+$/.test(e);
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v7 · 15. nov. 22.40";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
-  const _vv=verifyView;verifyView=function(){return _vv().replace(/maxlength="6"/,'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
+  const VER="v8 · 15. nov. 23.30";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const _vv=verifyView;verifyView=function(){return _vv().replace(/Bekræft din e-mail/,S.vf&&S.vf.pw?'Skriv dit kodeord':'Bekræft din e-mail').replace(/Vi har sendt en kode til/,S.vf&&S.vf.pw?'Admin-login for':'Vi har sendt en kode til').replace(/maxlength="6"/,S.vf&&S.vf.pw?'maxlength="128" type="password" autocomplete="current-password"':'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
     const r=await sb.auth.signInWithOtp({email:e,options:{shouldCreateUser:true}});
@@ -42,7 +41,7 @@
   loginGo=async function(){
     const e=($("#li_e").value||"").trim().toLowerCase();
     if(!okMail(e)){fail("Skriv en gyldig e-mail.");return}
-    if(e==DEMO_EMAIL){S.vf={mode:"login",e,sent:Date.now(),tries:0,demo:1};S.auth="verify";S.serr="";render();return}
+    if(e==ADMIN_EMAIL){S.vf={mode:"login",e,sent:Date.now(),tries:0,pw:1};S.auth="verify";S.serr="";render();return}
     const m=await sendOtp(e);if(m){fail(m);return}
     S.vf={mode:"login",e,sent:Date.now(),tries:0,live:1};S.auth="verify";S.serr="";render();
   };
@@ -58,7 +57,7 @@
   vfResend=async function(){
     const v=S.vf,w=30-Math.floor((Date.now()-v.sent)/1000);
     if(w>0){fail("Vent "+w+" sekunder, før du kan sende en ny kode.");return}
-    if(v.demo){v.sent=Date.now();v.tries=0;S.serr="";toast("Ny kode sendt til "+v.e);return}
+    if(v.pw){toast("Skriv dit kodeord");return}
     const m=await sendOtp(v.e);if(m){fail(m);return}
     v.sent=Date.now();v.tries=0;S.serr="";toast("Ny kode sendt til "+v.e);
   };
@@ -66,9 +65,11 @@
   verifyGo=async function(){
     const v=S.vf,c=($("#vf_c").value||"").trim();
     if(v.tries>=5){fail("For mange forkerte forsøg. Send en ny kode.");return}
-    if(v.demo){
-      if(c!==DEMO_CODE){v.tries++;fail(v.tries>=5?"For mange forkerte forsøg. Send en ny kode.":"Koden er forkert eller udløbet. Du har "+(5-v.tries)+" forsøg tilbage.");return}
-      enterDemo();return;
+    if(v.pw){
+      if(!c){fail("Skriv dit kodeord.");return}
+      const r=await sb.auth.signInWithPassword({email:v.e,password:c});
+      if(r.error||!r.data||!r.data.session){v.tries++;fail(v.tries>=5?"For mange forkerte forsøg. Vent lidt og prøv igen.":"Kodeordet er forkert. Du har "+(5-v.tries)+" forsøg tilbage.");return}
+      await afterLogin(v);return;
     }
     if(!/^\d{6,8}$/.test(c)){fail("Skriv koden fra mailen.");return}
     const r=await sb.auth.verifyOtp({email:v.e,token:c,type:"email"});
@@ -114,13 +115,8 @@
     }catch(e){S.user=null;S.vf=null;S.auth="login";fail(errm(e))}
   }
 
-  function enterDemo(){
-    DKEYS.forEach(k=>{S[k]=JSON.parse(JSON.stringify(DEMO[k]))});
-    S.demo=true;S.live=false;S.liveUid=null;S.liveCampId=null;S.vf=null;S.auth="login";S.serr="";
-    enter({role:"Arrangør",camp:CAMPN});S.modal=null;render();
-  }
   const _lo=logout;
-  logout=async function(){try{await sb.auth.signOut()}catch(e){}S.pc=[];if(S.demo){S.demo=false;S.live=true;emptyState()}_lo()};
+  logout=async function(){try{if(S.sup)await sb.rpc("platform_leave");await sb.auth.signOut()}catch(e){}S.pc=[];S.sup=false;S.liveUid=null;emptyState();S.liveCampId=null;_lo()};
 
   // Gem støvle og Z i databasen
   async function saveProfDb(){
@@ -134,7 +130,6 @@
 
   // Slet min konto
   window.delAcc=async function(){
-    if(S.demo){logout();return}
     if(!confirm("Slet din konto og alle dine data? Det kan ikke fortrydes."))return;
     const r=await sb.rpc("delete_my_account");
     if(r.error){toast("Kontoen kunne ikke slettes: "+errm(r.error));return}
@@ -151,12 +146,50 @@
   const esc=x=>String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   function platView(){
     const err=S.perr?`<div class="mut" style="color:var(--acc)">${esc(S.perr)}</div>`:"",ok=S.pok?`<div class="mut" style="color:var(--ok)">${esc(S.pok)}</div>`:"";
-    return `<h2>Platform</h2><div class="mut">Her opretter du camps og inviterer arrangører. Arrangøren logger ind med den e-mail, du skriver.</div>
+    const pick=S.supPick?`<div class="card"><h3>Åbn som ${esc(S.supPick.role)}</h3><select id="sp_v">${S.supPick.opts.map(o=>`<option value="${esc(o.v)}">${esc(o.n)}</option>`).join("")}</select><button class="btn" onclick="platPick()">Åbn</button><button class="btn alt" onclick="S.supPick=null;render()">Annullér</button></div>`:"";
+    return `<h2>Platform</h2>${pick}<div class="mut">Her opretter du camps og inviterer arrangører. Arrangøren logger ind med den e-mail, du skriver.</div>
 <div class="card"><h3>Opret camp</h3><input id="pc_n" placeholder="Campens navn"><input id="pc_c" placeholder="Camp-kode (4-12 bogstaver/tal)" autocapitalize="characters"><div class="mut">Camp slutter</div><input id="pc_d" type="date"><input id="pc_e" type="email" placeholder="Arrangørens e-mail">${err}${ok}<button class="btn" onclick="platCreate()">Opret camp og inviter arrangør</button></div>
-<h2>Camps (${S.pc.length})</h2>${S.pc.length?S.pc.map(c=>`<div class="card"><h3>${esc(c.name)}</h3><div class="mut">Kode: ${esc(c.code)} · ${c.participants} deltagere · slutter ${esc(c.end_date||"–")}</div><div class="mut">${c.organizer_joined?"Arrangøren er oprettet":"Arrangøren har ikke logget ind endnu"}</div>${c.organizer_joined?"":`<input id="po_${c.id}" type="email" placeholder="Ny arrangør-e-mail"><button class="btn alt" onclick="platOrg('${c.id}')">Skift arrangør</button>`}<button class="btn alt" onclick="platDel('${c.id}')">Slet camp</button></div>`).join(""):`<div class="mut">Ingen camps endnu.</div>`}
+<h2>Camps (${S.pc.length})</h2>${S.pc.length?S.pc.map(c=>`<div class="card"><h3>${esc(c.name)}</h3><div class="mut">Kode: ${esc(c.code)} · ${c.participants} deltagere · slutter ${esc(c.end_date||"–")}</div><div class="mut">${c.organizer_joined?"Arrangøren er oprettet":"Arrangøren har ikke logget ind endnu"}</div>${c.organizer_joined?"":`<input id="po_${c.id}" type="email" placeholder="Ny arrangør-e-mail"><button class="btn alt" onclick="platOrg('${c.id}')">Skift arrangør</button>`}<div class="mut" style="margin-top:8px">Åbn campen og arbejd som:</div><div style="display:flex;gap:6px;flex-wrap:wrap">${["Arrangør","Skiforretning","Instruktør","Deltager"].map(r=>`<button class="chip" onclick="platOpen('${c.id}','${r}')">${r}</button>`).join("")}</div><button class="btn alt" onclick="platDel('${c.id}')">Slet camp</button></div>`).join(""):`<div class="mut">Ingen camps endnu.</div>`}
 <button class="btn alt" onclick="platRefresh()">Opdatér</button><button class="btn alt" onclick="logout()">Log ud</button>`;
   }
   const _vw=view;view=function(){return S.live&&S.role=="Platform"&&S.tab=="plat"?platView():_vw()};
+  // Åbn en rigtig camp i en rolle (platformens support-adgang, logges i databasen)
+  async function supOpen(cid,role,shopId,email){
+    const r=await sb.rpc("platform_enter",{p_camp:cid,p_role:role,p_shop:shopId||null,p_email:email||null});
+    if(r.error){S.perr=errm(r.error);S.sup=false;S.role="Platform";S.tab="plat";render();return false}
+    const c=S.pc.find(x=>x.id==cid)||{};
+    emptyState();S.liveCampId=cid;S.liveUid=((await sb.auth.getUser()).data.user||{}).id||"admin";S.sup=true;S.supInfo={cid,role,shopId,email};
+    S.camp=c.name||"Camp";S.role=role;S.tab="";S.who=email||"";S.prof.e=email||"";S.setup=false;
+    await loadCampData();
+    const sh=shopId&&S.shops.find(z=>z._id==shopId);if(sh)S.shop=sh.n;
+    if(role=="Instruktør"){const i=S.instr.find(z=>(z.e||"").toLowerCase()==(email||"").toLowerCase());if(i)S.who=i.n}
+    render();return true;
+  }
+  window.platOpen=async function(cid,role){
+    S.perr="";S.pok="";
+    if(role=="Skiforretning"||role=="Instruktør"){
+      S.liveCampId=cid;emptyState();S.liveCampId=cid;S.role="Arrangør";
+      const sup=await sb.rpc("platform_enter",{p_camp:cid,p_role:"Arrangør"});
+      if(sup.error){S.perr=errm(sup.error);render();return}
+      await loadCampData();
+      const opts=role=="Skiforretning"?S.shops.map(z=>({v:z._id,n:z.n})):S.instr.filter(z=>z.e).map(z=>({v:z.e,n:z.n}));
+      S.supPick={cid,role,opts};S.role="Platform";S.tab="plat";S.sup=false;
+      if(!opts.length){S.supPick=null;S.perr=role=="Skiforretning"?"Campen har ingen butikker endnu.":"Campen har ingen instruktører med e-mail endnu."}
+      await sb.rpc("platform_leave");emptyState();S.liveCampId=null;render();return;
+    }
+    await supOpen(cid,role);
+  };
+  window.platPick=async function(){
+    const p=S.supPick,v=($("#sp_v")||{}).value;if(!p||!v)return;S.supPick=null;
+    if(p.role=="Skiforretning")await supOpen(p.cid,p.role,v);else await supOpen(p.cid,p.role,null,v);
+  };
+  supBack=async function(){
+    await sb.rpc("platform_leave");S.sup=false;S.supInfo=null;S.liveUid=null;emptyState();S.liveCampId=null;S.role="Platform";S.camp=null;S.tab="plat";await loadPlatform();
+  };
+  supBar=function(){
+    const i=S.supInfo||{};
+    return `<div class="sup"><span>Platform: ${esc(S.camp)} som ${esc(i.role)}${i.email?" ("+esc(S.who||i.email)+")":""}${i.shopId&&S.shop?" ("+esc(S.shop)+")":""}</span><button class="chip" onclick="supBack()">← Platform</button></div>`;
+  };
   window.platRefresh=async function(){S.perr="";S.pok="";await loadPlatform()};
   window.platCreate=async function(){
     const n=$("#pc_n").value.trim(),c=$("#pc_c").value.trim().toUpperCase(),d=$("#pc_d").value||null,e=$("#pc_e").value.trim().toLowerCase();
