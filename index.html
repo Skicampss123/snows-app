@@ -102,9 +102,7 @@ function view(){
  <button class="btn alt" onclick="S.ierr='';S.modal={ski:1};render()">⌨️ Skriv ski-ID i stedet</button>
  <h2 style="margin-top:22px">${t("onNow")}</h2>${on.length?on.map(k=>skiCard(k,S.ski.indexOf(k))).join(""):`<p class="mut">Du har ingen ski på lige nu.</p>`}
  ${S.ev.length?`<div class="card"><h3>Næste: ${S.ev[0].t}</h3><div class="mut">${S.ev[0].tm}</div></div>`:""}
- <button class="btn alt" onclick="togNet()">Demo: ${S.online?"Slå net fra":"Slå net til"}</button>
- <select onchange="const v=this.value.split(' ');S.now={d:v[0],tm:v[1]};render()">${["Man 07:30","Man 08:30","Tirs 08:30","Ons 08:30"].map(x=>`<option value="${x}" ${x==S.now.d+" "+S.now.tm?"selected":""}>Demo-tid: ${x}</option>`).join("")}</select>
- <select onchange="S.role=this.value;render()">${["Deltager","Skiforretning","Instruktør","Arrangør","Platform"].map(r=>`<option ${r==S.role?"selected":""}>${r}</option>`).join("")}</select>`}
+`}
  if(S.tab=="skis")return skisView();
  if(S.tab=="ws")return wsPage();
  if(S.tab=="week")return progView();
@@ -438,4 +436,4 @@ function applyTr(){if(S.lang=="da"||!S.lang)return;const r=document.getElementBy
 const render0=render;render=function(){render0();applyTr()};
 
 loadSess();render();
-</script><script src="live.js?v=20261116c"></script></body></html>
+</script><script src="live.js?v=20261116d"></script></body></html>
