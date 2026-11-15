@@ -18,7 +18,7 @@
 
   // Fjern prototype-hjælp fra login og kode-skærm
   const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")};
-  const _vv=verifyView;verifyView=function(){return _vv().replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
+  const _vv=verifyView;verifyView=function(){return _vv().replace(/maxlength="6"/,'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
     const r=await sb.auth.signInWithOtp({email:e,options:{shouldCreateUser:true}});
@@ -54,7 +54,7 @@
   verifyGo=async function(){
     const v=S.vf,c=($("#vf_c").value||"").trim();
     if(v.tries>=5){fail("For mange forkerte forsøg. Send en ny kode.");return}
-    if(!/^\d{6}$/.test(c)){fail("Skriv de 6 cifre fra mailen.");return}
+    if(!/^\d{6,8}$/.test(c)){fail("Skriv koden fra mailen.");return}
     const r=await sb.auth.verifyOtp({email:v.e,token:c,type:"email"});
     if(r.error||!r.data||!r.data.session){v.tries++;fail(v.tries>=5?"For mange forkerte forsøg. Send en ny kode.":"Koden er forkert eller udløbet. Du har "+(5-v.tries)+" forsøg tilbage.");return}
     await afterLogin(v);
