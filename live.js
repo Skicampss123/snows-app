@@ -26,7 +26,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v11 · 15. nov. 23.10";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v12 · 15. nov. 23.40";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/Bekræft din e-mail/,S.vf&&S.vf.pw?'Skriv dit kodeord':'Bekræft din e-mail').replace(/Vi har sendt en kode til/,S.vf&&S.vf.pw?'Admin-login for':'Vi har sendt en kode til').replace(/maxlength="6"/,S.vf&&S.vf.pw?'maxlength="128" type="password" autocomplete="current-password"':'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -373,17 +373,74 @@
   const _vw2=view;view=function(){return S.live&&S.role=="Skiforretning"&&S.tab=="dash"?shopDash():_vw2()};
 
 
+
+  // ───── Kamera: scan QR-koden på skien ─────
+  // Ligger uden for appens visning, så den ikke bliver nulstillet, mens kameraet kører
+  let CAM=null;
+  function loadJsQr(){
+    if(window.jsQR)return Promise.resolve();
+    return new Promise((ok,no)=>{const e=document.createElement("script");e.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";e.onload=ok;e.onerror=no;document.head.appendChild(e)});
+  }
+  function camClose(){
+    if(!CAM)return;CAM.stop=true;
+    try{CAM.stream&&CAM.stream.getTracks().forEach(x=>x.stop())}catch(e){}
+    CAM.el&&CAM.el.remove();CAM=null;
+  }
+  window.camManual=function(){const m=CAM&&CAM.mode;camClose();S.ierr="";S.modal=m=="ret"?{ret:1}:{ski:1};render()};
+  window.camClose=camClose;
+  async function camOpen(mode){
+    if(CAM)return;
+    if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){toast(tr("Kameraet kan ikke bruges her. Skriv ID'et i stedet."));S.modal=mode=="ret"?{ret:1}:{ski:1};render();return}
+    const el=document.createElement("div");
+    el.style.cssText="position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column";
+    el.innerHTML=`<video playsinline muted autoplay style="flex:1;min-height:0;width:100%;object-fit:cover"></video><div style="position:absolute;left:50%;top:38%;width:62vmin;height:62vmin;transform:translate(-50%,-50%);border:3px solid #fff;border-radius:18px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)"></div><div style="padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:#111;color:#fff;text-align:center"><div id="cam_t" style="margin-bottom:10px">${esc(tr("Hold QR-koden på skien i rammen"))}</div><button class="btn" style="margin:0 0 8px" onclick="camManual()">${esc(tr("Skriv ID i stedet"))}</button><button class="btn alt" style="margin:0" onclick="camClose()">${esc(tr("Annuller"))}</button></div>`;
+    document.body.appendChild(el);
+    CAM={el,mode,stop:false};
+    try{
+      CAM.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
+    }catch(e){
+      camClose();toast(tr(e&&e.name=="NotAllowedError"?"Kameraet er ikke tilladt. Tillad det i browseren, eller skriv ID'et.":"Vi kunne ikke åbne kameraet. Skriv ID'et i stedet."));
+      S.modal=mode=="ret"?{ret:1}:{ski:1};render();return;
+    }
+    if(!CAM||CAM.stop){return}
+    const v=el.querySelector("video");v.srcObject=CAM.stream;try{await v.play()}catch(e){}
+    let det=null;
+    if(window.BarcodeDetector){try{det=new BarcodeDetector({formats:["qr_code"]})}catch(e){det=null}}
+    if(!det){try{await loadJsQr()}catch(e){camClose();toast(tr("Scanneren kunne ikke hentes. Skriv ID'et i stedet."));S.modal=mode=="ret"?{ret:1}:{ski:1};render();return}}
+    const cv=document.createElement("canvas"),cx=cv.getContext("2d",{willReadFrequently:true});
+    const hit=async txt=>{
+      const code=codeOf_(txt);if(!/^SK-[A-Z0-9]+$/.test(code))return false;
+      const m=CAM.mode;camClose();if(navigator.vibrate)try{navigator.vibrate(60)}catch(e){}
+      if(m=="ret")await retCode(code);else await lendCode(code);
+      return true;
+    };
+    const tick=async()=>{
+      if(!CAM||CAM.stop)return;
+      try{
+        if(v.readyState>=2&&v.videoWidth){
+          let txt=null;
+          if(det){const r=await det.detect(v);if(r&&r[0])txt=r[0].rawValue}
+          else{const w=Math.min(640,v.videoWidth),h=Math.round(w*v.videoHeight/v.videoWidth);cv.width=w;cv.height=h;cx.drawImage(v,0,0,w,h);const im=cx.getImageData(0,0,w,h),q=window.jsQR(im.data,w,h,{inversionAttempts:"attemptBoth"});if(q)txt=q.data}
+          if(txt&&await hit(txt))return;
+        }
+      }catch(e){}
+      if(CAM&&!CAM.stop)setTimeout(tick,det?150:220);
+    };
+    tick();
+  }
+
   // ───── Udlån, aflevering og stjerner i databasen ─────
   const skiByCode=c=>S.skilist.find(x=>String(x.id).toUpperCase()==String(c).toUpperCase()&&!x.gone);
-  scan=function(){if(S.ski.some(k=>k.st=="ude")){toast(t("blocked"));return}S.ierr="";S.modal={ski:1};render()};
-  idGo=async function(){
-    const v=($("#sid").value||"").trim().toUpperCase();
-    if(!v){S.ierr="Skriv ski-ID'et.";render();return}
-    if(!S.online){S.ierr="Du er offline. Prøv igen, når du har forbindelse.";render();return}
+  const codeOf_=t=>{const m=String(t||"").toUpperCase().match(/SK-[A-Z0-9]+/);return m?m[0]:String(t||"").trim().toUpperCase()};
+  async function lendCode(v){
+    if(!v){S.ierr="Skriv ski-ID'et.";render();return false}
+    if(!S.online){S.ierr="Du er offline. Prøv igen, når du har forbindelse.";render();return false}
     const q=await sb.rpc("lend_ski",{p_code:v});
-    if(q.error){S.ierr=errm(q.error);render();return}
-    S.modal=null;S.ierr="";await loadCampData(true);toast("Skien er tilføjet ✓");render();
-  };
+    if(q.error){S.ierr=errm(q.error);S.modal={ski:1};render();return false}
+    S.modal=null;S.ierr="";await loadCampData(true);toast("Skien er tilføjet ✓");render();return true;
+  }
+  idGo=async function(){lendCode(codeOf_(($("#sid").value||"")))};
+  scan=function(){if(S.ski.some(k=>k.st=="ude")){toast(t("blocked"));return}S.ierr="";camOpen("lend")};
   handIn=async function(id){
     const k=skiByCode(id);if(!k)return;
     const q=await sb.rpc("hand_in",{p_ski:k._id});
@@ -397,13 +454,14 @@
     await loadCampData(true);render();
   };
   // Butikken scanner/skriver ID ved aflevering
-  scanReturn=function(){S.ierr="";S.modal={ret:1};render()};
-  window.retGo=async function(){
-    const v=($("#rid").value||"").trim().toUpperCase(),k=skiByCode(v);
-    if(!k||(isShop()&&k.sh!=S.shop)){S.ierr="Vi kan ikke finde en af jeres ski med det ID.";render();return}
-    if(k.st!="ude"){S.ierr="Den ski er ikke udlånt.";render();return}
+  scanReturn=function(){S.ierr="";camOpen("ret")};
+  async function retCode(v){
+    const k=skiByCode(v);
+    if(!k||(isShop()&&k.sh!=S.shop)){S.ierr="Vi kan ikke finde en af jeres ski med det ID.";S.modal={ret:1};render();return}
+    if(k.st!="ude"){S.ierr="Den ski er ikke udlånt.";S.modal={ret:1};render();return}
     const who=k.by;S.modal=null;S.ierr="";await done(k.id);toast(k.br+" "+k.m+" er afleveret"+(who?" af "+who:"")+" ✓");
-  };
+  }
+  window.retGo=function(){retCode(codeOf_(($("#rid").value||"")))};
   const _md=modal;modal=function(){
     if(S.modal&&S.modal.ret)return `<div class="modal"><div class="card"><h3>Ski afleveret</h3><div class="mut">Skriv ID'et under QR-koden, fx SK-102.</div><input id="rid" placeholder="SK-" autocapitalize="characters">${S.ierr?`<div class="mut" style="color:var(--acc)">${esc(S.ierr)}</div>`:""}<button class="btn" onclick="retGo()">Bekræft aflevering</button><button class="btn alt" onclick="S.modal=null;render()">Annuller</button></div></div>`;
     return _md();
