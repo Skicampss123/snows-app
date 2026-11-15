@@ -583,7 +583,7 @@
     const b=new Date(S.campStart+"T12:00:00Z"),add=(DOW[d]-b.getUTCDay()+7)%7;b.setUTCDate(b.getUTCDate()+add);return b;
   }
   function applyDN(){
-    Object.keys(DNB).forEach(d=>{const x=dayDate(d);DN[d]=DNB[d]+(x?" "+x.getUTCDate()+". "+MON[x.getUTCMonth()]:"")});
+    Object.keys(DNB).forEach(d=>{const x=dayDate(d);DN[d]=DNB[d]});
   }
   applyDN();
   setInterval(()=>{if(S.liveUid&&tickNow()){const a=document.activeElement;if(!S.modal&&!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)))render()}},20000);
