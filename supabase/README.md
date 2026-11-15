@@ -13,7 +13,14 @@ Authentication → Providers → Email: slå "Confirm email" til, og brug kode i
 Authentication → Emails → Magic Link-skabelonen: skriv `{{ .Token }}` (6 cifre) i teksten.
 Authentication → Settings: OTP expiry = 600 sekunder, OTP length = 6.
 
-## 3. Første camp (kør i SQL Editor)
+## 2b. Platform (dig)
+Kør `002_platform.sql`, og tilføj din egen login-e-mail (små bogstaver):
+```sql
+insert into platform_admins(email) values ('din@mail.dk');
+```
+Herefter opretter du camps og inviterer arrangører inde fra appen (Platform-fanen).
+
+## 3. Første camp (kan også gøres fra appen) (kør i SQL Editor)
 ```sql
 insert into camps(name, code, end_date) values ('Snow’s Sölden 2026', 'SNOW26', '2027-03-31');
 insert into invites(camp_id, email, role, name)
