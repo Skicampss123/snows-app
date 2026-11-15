@@ -26,7 +26,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v14 · 16. nov. 01.10";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v15 · 16. nov. 01.40";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/Bekræft din e-mail/,S.vf&&S.vf.pw?'Skriv dit kodeord':'Bekræft din e-mail').replace(/Vi har sendt en kode til/,S.vf&&S.vf.pw?'Admin-login for':'Vi har sendt en kode til').replace(/maxlength="6"/,S.vf&&S.vf.pw?'maxlength="128" type="password" autocomplete="current-password"':'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -690,7 +690,11 @@
   // Arrangørens nyhed sendes også som push
   const _mgAdd=mgAdd;mgAdd=function(k){
     const n=S.news.length;_mgAdd(k);
-    if(k=="nw"&&S.news.length>n&&sb.functions){const x=S.news[0];sb.functions.invoke("send-push",{body:{title:x.t,body:x.x||""}}).then(r=>{if(r.error)toast(tr("Nyheden er gemt, men beskeden kunne ikke sendes som push."))}).catch(()=>{})}
+    if(k=="nw"&&S.news.length>n&&sb.functions){const x=S.news[0];sb.functions.invoke("send-push",{body:{title:x.t,body:x.x||""}}).then(async r=>{
+      if(r.error){let m=errm(r.error);try{if(r.error.context&&r.error.context.json){const j=await r.error.context.json();if(j&&j.error)m=j.error}}catch(e){}toast(tr("Beskeden kunne ikke sendes som push")+": "+m);return}
+      const n=r.data&&typeof r.data.sent=="number"?r.data.sent:null;
+      toast(n===0?tr("Nyheden er udgivet, men ingen telefoner er tilmeldt beskeder endnu."):n>0?tr("Push-besked sendt til")+" "+n+" "+tr("enheder")+" ✓":tr("Nyheden er udgivet."));
+    }).catch(e=>toast(tr("Beskeden kunne ikke sendes som push")+": "+errm(e)))}
   };
 
   // ───── Juridisk: privatlivspolitik og vilkår (udkast – skal gennemlæses og udfyldes) ─────
