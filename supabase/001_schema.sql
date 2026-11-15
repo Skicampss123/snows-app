@@ -109,7 +109,7 @@ create table if not exists workshops(
   kind text not null default 'Workshop' check (kind in ('Workshop','Event')),
   level text,
   starts_at timestamptz not null,
-  duration_min int not null default 120 check (duration_min between 15 and 600),
+  duration_min int not null default 120 check (duration_min between 5 and 600),
   max_seats int not null default 10 check (max_seats between 1 and 500),
   instructor_id uuid references profiles on delete set null,
   place text,
