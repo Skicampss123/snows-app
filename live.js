@@ -26,7 +26,7 @@
   const fail=m=>{S.serr=m;render()};
 
   // Fjern prototype-hjælp fra login og kode-skærm
-  const VER="v9 · 15. nov. 22.15";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
+  const VER="v10 · 15. nov. 22.45";const _av=authView;authView=function(){return _av().replace(/<p class="mut" style="margin-top:14px">Prototype[\s\S]*?<\/p>/,"")+`<div class="mut" style="font-size:12px;margin-top:10px">Version ${VER}</div>`};
   const _vv=verifyView;verifyView=function(){return _vv().replace(/Bekræft din e-mail/,S.vf&&S.vf.pw?'Skriv dit kodeord':'Bekræft din e-mail').replace(/Vi har sendt en kode til/,S.vf&&S.vf.pw?'Admin-login for':'Vi har sendt en kode til').replace(/maxlength="6"/,S.vf&&S.vf.pw?'maxlength="128" type="password" autocomplete="current-password"':'maxlength="8"').replace(/<div class="card" style="margin-top:14px">[\s\S]*$/,"")};
 
   async function sendOtp(e){
@@ -339,6 +339,30 @@
     if(isOrg()&&!(lv.data&&lv.data.length))LAST.levels=new Map();
   }
 
+
+
+  // ───── Butikkens overblik (kun egne ski) ─────
+  const SST={key:"",d:null,err:"",busy:false};
+  async function loadStats(force){
+    if(SST.busy||(!force&&SST.d&&SST.key==S.liveCampId+"|"+S.shop&&Date.now()-SST.t<20000))return;
+    SST.busy=true;
+    const r=await sb.rpc("shop_stats");SST.busy=false;
+    if(r.error){SST.err=errm(r.error);SST.d=null}else{SST.err="";SST.d=r.data;SST.key=S.liveCampId+"|"+S.shop;SST.t=Date.now()}
+    render();
+  }
+  window.statsRefresh=()=>{SST.d=null;loadStats(true)};
+  const stars=a=>a==null?"–":String(a).replace(".",",")+" ★";
+  function shopDash(){
+    loadStats();
+    const d=SST.d;
+    const head=`<h2>${t("dash")}</h2><div class="mut">Kun jeres egne ski${S.shop?" ("+esc(S.shop)+")":""}.</div>`;
+    if(SST.err)return head+`<div class="card" style="border-color:var(--acc)">Tallene kunne ikke hentes: ${esc(SST.err)}</div><button class="btn alt" onclick="statsRefresh()">Opdatér</button>`;
+    if(!d)return head+`<div class="mut">Henter tal …</div>`;
+    const tile=(big,txt)=>`<div class="card"><div class="big">${big}</div>${txt}</div>`;
+    const rows=(d.models||[]).map(m=>`<div class="card"><b>${esc(m.brand)} ${esc(m.model)}</b><div class="mut">${m.skis} ski · ${m.loans} gange udlånt</div><div style="color:var(--acc);font-size:18px">${m.ratings?stars(m.avg)+' <span class="mut" style="font-size:14px">('+m.ratings+' stjerner givet)</span>':'<span class="mut" style="font-size:14px">Ingen stjerner endnu</span>'}</div></div>`).join("");
+    return head+tile(d.total_loans,"udlån i alt")+tile(stars(d.avg_stars),d.rating_count?"gennemsnit af stjerner ("+d.rating_count+" givet)":"gennemsnit af stjerner (ingen endnu)")+tile(d.damaged,"ski skadet under vejs")+(d.lost?tile(d.lost,"ski mistet"):"")+`<h3>Modeller</h3>${rows||'<div class="mut">Ingen ski oprettet endnu.</div>'}<button class="btn alt" onclick="statsRefresh()">Opdatér</button>`;
+  }
+  const _vw2=view;view=function(){return S.live&&S.role=="Skiforretning"&&S.tab=="dash"?shopDash():_vw2()};
 
   // ───── Vejr for campens sted (Open-Meteo, ingen nøgle) ─────
   const WXT={da:{0:"klart",1:"mest sol",2:"let skyet",3:"overskyet",45:"tåge",51:"støvregn",61:"regn",71:"sne",80:"byger",85:"snebyger",95:"torden",wind:"vind",in:"Vejr i",nf:"Vejret kunne ikke findes for stedet. Tjek byen i Sted og praktisk info.",ld:"Henter vejr …",tm:"Næste dage"},
