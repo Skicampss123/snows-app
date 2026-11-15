@@ -13,11 +13,11 @@ Authentication → Providers → Email: slå "Confirm email" til, og brug kode i
 Authentication → Emails → Magic Link-skabelonen: skriv `{{ .Token }}` (6 cifre) i teksten.
 Authentication → Settings: OTP expiry = 600 sekunder, OTP length = 6.
 
-## 3. Første camp (kør i SQL Editor, ret e-mail)
+## 3. Første camp (kør i SQL Editor)
 ```sql
 insert into camps(name, code, end_date) values ('Snow’s Sölden 2026', 'SNOW26', '2027-03-31');
 insert into invites(camp_id, email, role, name)
-select id, 'ARRANGOER@EKSEMPEL.DK', 'Arrangør', 'Arrangør' from camps where code='SNOW26';
+select id, 'linmig63@gmail.com', 'Arrangør', 'Arrangør' from camps where code='SNOW26';
 ```
 Arrangøren logger så ind med sin e-mail og opretter selv butikker, instruktører og hold.
 
