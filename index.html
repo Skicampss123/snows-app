@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Snow's</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#0b5cff">
+<meta name="theme-color" content="#0E2236">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Snow's">
@@ -11,46 +11,63 @@
 <link rel="icon" href="icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--bg:#EEF3F7;--card:#fff;--ink:#0B2A43;--mut:#4A6378;--acc:#D9441F;--onacc:#fff;--line:#C5D3DE;--ok:#1E7B4A;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0A1B2A;--card:#132D43;--ink:#F2F7FB;--mut:#A9BFD0;--acc:#FF6A3D;--onacc:#0A1B2A;--line:#2C4A63;--ok:#5FD08F;color-scheme:dark}}
-html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--ink);font:20px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--ink);color:var(--bg)}
-header b{font-size:24px;letter-spacing:.5px}
-.help{background:var(--acc);color:var(--onacc);border:0;border-radius:24px;font:700 18px inherit;padding:10px 18px;min-height:48px}
-main{flex:1;overflow:auto;padding:16px}
-h2{font-size:28px;margin:4px 0 14px}
-.card{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
-.card h3{margin:0 0 4px;font-size:22px}
-.mut{color:var(--mut);font-size:18px}
-.btn{display:block;width:100%;min-height:60px;border:0;border-radius:14px;background:var(--acc);color:var(--onacc);font:700 22px system-ui;margin:10px 0 0}
-.btn.alt{background:transparent;color:var(--ink);border:2px solid var(--ink)}
-.btn.ok{background:var(--ok);color:#fff}
-input,select{width:100%;box-sizing:border-box;min-height:56px;font:20px system-ui;padding:8px 14px;border:2px solid var(--ink);border-radius:12px;background:var(--card);color:var(--ink);margin:6px 0}
-nav{display:flex;border-top:2px solid var(--line);background:var(--card);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav button{flex:1;border:0;background:none;color:var(--mut);font:600 16px system-ui;padding:10px 2px;min-height:64px}
-nav button.on{color:var(--acc);font-weight:800}
-nav span{display:block;font-size:26px}
+:root{--bg:#F2F5F9;--card:#fff;--ink:#0E2236;--mut:#62758A;--acc:#E8532B;--acc2:#FF7A4D;--onacc:#fff;--line:#E3EAF1;--soft:#EAF0F6;--ok:#1E9A5B;--sh:0 1px 2px rgba(14,34,54,.05),0 6px 20px rgba(14,34,54,.07);--r:20px;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0A141F;--card:#14222F;--ink:#F1F6FA;--mut:#93A8BA;--acc:#FF6A3D;--acc2:#FF8E63;--onacc:#fff;--line:#223545;--soft:#1B2D3D;--ok:#4CD08A;--sh:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);color-scheme:dark}}
+*{-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overscroll-behavior:none}
+body{background:var(--bg);color:var(--ink);font:17px/1.42 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;letter-spacing:-.005em}
+header{display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top,0px)) 18px 12px;background:linear-gradient(135deg,#0E2236 0%,#17405F 100%);color:#fff;border-radius:0 0 26px 26px;box-shadow:0 6px 24px rgba(14,34,54,.25);position:relative;z-index:3}
+header b{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.help{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:24px;font:700 15px inherit;padding:8px 16px;min-height:40px;backdrop-filter:blur(8px);transition:transform .12s}
+.help:active{transform:scale(.95)}
+main{flex:1;overflow:auto;padding:18px 16px 24px;-webkit-overflow-scrolling:touch}
+main>*{animation:rise .28s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+h2{font-size:30px;font-weight:800;letter-spacing:-.03em;margin:2px 0 14px}
+h3{letter-spacing:-.015em}
+.card{background:var(--card);border:0;border-radius:var(--r);padding:16px 18px;margin-bottom:12px;box-shadow:var(--sh)}
+.card h3{margin:0 0 4px;font-size:19px;font-weight:700}
+.mut{color:var(--mut);font-size:15px}
+.btn{display:block;width:100%;min-height:54px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--acc) 0%,var(--acc2) 100%);color:var(--onacc);font:700 18px -apple-system,system-ui;margin:12px 0 0;box-shadow:0 6px 16px rgba(232,83,43,.28);transition:transform .12s,box-shadow .12s}
+.btn:active{transform:scale(.975);box-shadow:0 2px 6px rgba(232,83,43,.25)}
+.btn.alt{background:var(--soft);color:var(--ink);box-shadow:none;border:0}
+.btn.ok{background:var(--ok);box-shadow:none}
+input,select,textarea{width:100%;box-sizing:border-box;min-height:52px;font:17px -apple-system,system-ui;padding:10px 16px;border:2px solid transparent;border-radius:14px;background:var(--soft);color:var(--ink);margin:6px 0;outline:0;transition:border-color .15s,background .15s}
+textarea{font-family:inherit;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);background:var(--card)}
+input[type=checkbox]{width:auto;min-height:0}
+nav{display:flex;gap:2px;margin:0 12px calc(10px + env(safe-area-inset-bottom,0px));padding:6px;border-radius:26px;background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 8px 30px rgba(14,34,54,.18);border:1px solid var(--line)}
+nav button{flex:1;border:0;background:none;color:var(--mut);font:600 11.5px -apple-system,system-ui;padding:7px 2px 6px;min-height:56px;border-radius:20px;transition:background .2s,color .2s,transform .12s}
+nav button:active{transform:scale(.94)}
+nav button.on{color:var(--acc);font-weight:800;background:color-mix(in srgb,var(--acc) 12%,transparent)}
+nav span{display:block;font-size:23px;line-height:1.1;margin-bottom:1px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.chip{border:2px solid var(--ink);background:none;color:var(--ink);border-radius:30px;padding:10px 18px;font:700 18px system-ui;min-height:48px}
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}.tile{text-align:left;border:2px solid var(--ink);background:none;color:var(--ink);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px;min-height:110px;font:inherit}.tile .ti{font-size:28px}.tile small{opacity:.7;font-size:15px}.bar{height:10px;border-radius:6px;background:rgba(128,128,128,.3);margin:8px 0 12px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}.ck{display:block;width:100%;text-align:left;border:0;background:none;color:var(--ink);font:600 18px system-ui;padding:10px 0;min-height:48px}
-.langpick{position:fixed;right:12px;bottom:12px;z-index:5}.langpick label{display:flex;align-items:center;gap:6px;background:var(--bg);border:2px solid var(--ink);border-radius:30px;padding:4px 10px;color:var(--ink)}.langpick select{border:0;background:none;color:var(--ink);font:700 16px system-ui;min-height:40px}
+.chip{border:0;background:var(--soft);color:var(--ink);border-radius:30px;padding:9px 16px;font:600 15px -apple-system,system-ui;min-height:42px;transition:transform .12s,background .15s}
+.chip:active{transform:scale(.95)}
 .chip.on{background:var(--ink);color:var(--bg)}
-.stars button{background:none;border:0;font-size:44px;color:var(--acc);padding:0 4px}
-.tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:16px;font-weight:700;background:var(--ok);color:#fff}
-.tag.w{background:var(--acc);color:var(--onacc)}
-.off{background:var(--acc);color:var(--onacc);text-align:center;font-weight:700;padding:6px;font-size:16px}
-.heart{float:right;border:0;background:none;font-size:34px;color:var(--acc)}
-.big{font-size:40px;font-weight:800}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}.tile{text-align:left;border:0;background:var(--card);box-shadow:var(--sh);color:var(--ink);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:4px;min-height:112px;font:inherit;transition:transform .12s}.tile:active{transform:scale(.97)}.tile .ti{font-size:28px}.tile b{font-size:16px}.tile small{color:var(--mut);font-size:13px}
+.bar{height:10px;border-radius:6px;background:var(--soft);margin:8px 0 12px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:6px}
+.ck{display:block;width:100%;text-align:left;border:0;background:none;color:var(--ink);font:600 16px -apple-system,system-ui;padding:10px 0;min-height:46px}
+.langpick{position:fixed;right:14px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:5}.langpick label{display:flex;align-items:center;gap:4px;background:var(--card);box-shadow:var(--sh);border:0;border-radius:30px;padding:2px 10px;color:var(--ink)}.langpick select{border:0;background:none;color:var(--ink);font:600 14px system-ui;min-height:36px;width:auto;margin:0;padding:0 4px}
+.stars button{background:none;border:0;font-size:44px;color:var(--line);padding:0 4px;transition:transform .12s}.stars button:active{transform:scale(1.2)}
+.tag{display:inline-block;padding:3px 11px;border-radius:20px;font-size:13px;font-weight:700;background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tag.w{background:color-mix(in srgb,var(--acc) 15%,transparent);color:var(--acc)}
+.off{background:var(--acc);color:var(--onacc);text-align:center;font-weight:700;padding:6px;font-size:14px}
+.heart{float:right;border:0;background:none;font-size:30px;color:var(--acc)}
+.big{font-size:38px;font-weight:800;letter-spacing:-.03em}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;padding:20px;z-index:9}
-.modal .card{width:100%;margin:0}
+.modal{position:fixed;inset:0;background:rgba(8,18,28,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;padding:0;z-index:9;animation:fade .2s ease}
+.modal .card{width:100%;max-width:560px;margin:0;border-radius:28px 28px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.25);animation:sheet .28s cubic-bezier(.2,.9,.3,1)}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes sheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 #app{display:flex;flex-direction:column;flex:1;min-height:0}
 main,.modal .card{zoom:var(--fz,1)}
-.sup{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#5B2A86;color:#fff;padding:8px 12px;font-size:16px;flex-wrap:wrap}
-.sup select{width:auto;min-height:44px;margin:0;font-size:16px}
-.sup .chip{color:#fff;border-color:#fff;min-height:44px;padding:6px 14px;font-size:16px}
+.sup{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#5B2A86;color:#fff;padding:8px 12px;font-size:15px;flex-wrap:wrap}
+.sup select{width:auto;min-height:40px;margin:0;font-size:15px;background:rgba(255,255,255,.15);color:#fff}
+.sup .chip{color:#fff;background:rgba(255,255,255,.18);min-height:40px;padding:6px 14px;font-size:15px}
 .ro .btn,.ro .heart{display:none}
+@media (min-width:700px){#app{max-width:560px;margin:0 auto;width:100%}body{background:var(--soft)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -62,7 +79,7 @@ waiting:"På venteliste",cancel:"Meld af",going:"Du er tilmeldt",level:"Niveau",
 consent:"Jeg accepterer, at arrangøren, skibutikkerne og de andre på mit hold kan se mit navn. Arrangøren gemmer også min e-mail. Du kan trække samtykket tilbage eller slette din konto når som helst.",
 priv:"Vi gemmer kun navn, støvlelængde (mm) og Z-værdi. Data slettes 90 dage efter campens afslutning.",offline:"Ingen net – dine valg gemmes og sendes senere",
 g1:"1. Scan skien med din telefon.",g2:"2. Aflever skien i butikken – de bekræfter i appen.",g3:"3. Giv skien stjerner.",g4:"4. Tilmeld dig workshops og events.",ok:"Forstået",
-confirm:"Bekræft aflevering",shopTitle:"Butik: aflevering",dash:"Overblik",instr:"Mine hold",checkin:"Tjek ind",push:"Send besked til alle",send:"Send",
+confirm:"Bekræft aflevering",shopTitle:"Butik",dash:"Overblik",instr:"Mine hold",checkin:"Tjek ind",push:"Send besked til alle",send:"Send",
 admin:"Admin",open:"Åbner",emerg:"Nødnummer: 112 (Østrig). Bjergredning: 140",blocked:"Aflever først dine nuværende ski.",newSki:"Opret ski",camp:"Campens navn og udseende",color:"Campens farve",logo:"Upload logo",qr:"Print QR-ark",lang:"Sprog",rateRem:"Husk at give stjerner til",vfH:"Bekræft din e-mail",vfP:"Vi har sendt en kode til",vfCode:"Kode fra mailen",vfBtn:"Bekræft",vfResend:"Send ny kode",vfChange:"Ret e-mail",contact:"Kontakt",nameLock:"Dit navn kan ikke ændres her. Er der en fejl, så kontakt campen:",eg:"fx.",loginH:"Log ind",loginP:"Skriv din e-mail. Vi sender dig en kode, så vi ved, det er dig.",loginSend:"Send kode på mail",yourCode:"Din kode",noUser:"Jeg har ingen bruger endnu",backPart:"← Tilbage til deltager",signupH:"Opret dig",signupP:"Skriv dit navn, din e-mail og koden fra din bekræftelse.",codeConf:"Campkode",createMe:"Opret mig",haveUser:"Jeg har allerede en bruger",staffLink:"Instruktør, butik eller arrangør? Log ind her",setupH:"Først lidt om dit udstyr",setupP:"Butikkerne bruger det til at finde de rigtige ski til dig.",bootLbl:"Størrelse på skistøvler – længde i mm",howRead:"? Hvordan aflæser jeg den",unknown:"Ved ikke endnu",saveGo:"Gem og fortsæt",later:"Udfyldes senere"};
 const TL={en:{help:"Help",login:"Log in",email:"Your email",sendCode:"Send code",code:"Code from your email",enter:"Enter",home:"Home",skis:"Skis",ws:"Workshops",week:"Schedule",info:"Info",scan:"Scan ski",scanning:"Scanning the QR code …",onNow:"You currently have",tried:"My tested skis",handIn:"I am returning",waitShop:"Waiting for the shop",rate:"Rate",note:"Short note (optional)",save:"Save",enroll:"Sign up",full:"Full – join waiting list",waiting:"On waiting list",cancel:"Cancel",going:"You are signed up",level:"Level",all:"All",who:"Extra participants (names)",profile:"My profile",name:"Name",boot:"Boot length (mm)",z:"DIN setting (Z value)",consent:"I accept that the organizer, ski shops and the others in my group can see my name. The organizer also stores my email. You can withdraw consent or delete your account at any time.",priv:"We only store name, boot length (mm) and DIN value. Data is deleted 90 days after the camp ends.",offline:"No connection – your choices are saved and sent later",g1:"1. Scan the ski with your phone.",g2:"2. Return the ski at the shop – they confirm in the app.",g3:"3. Rate the ski.",g4:"4. Sign up for workshops and events.",ok:"Got it",confirm:"Confirm return",shopTitle:"Shop: returns",dash:"Overview",instr:"My groups",checkin:"Check in",push:"Send message to everyone",send:"Send",admin:"Admin",open:"Opens",emerg:"Emergency: 112 (Austria). Mountain rescue: 140",blocked:"Return your current skis first.",newSki:"Add ski",camp:"Camp name and look",color:"Camp colour",logo:"Upload logo",qr:"Print QR sheet",lang:"Language",rateRem:"Remember to rate",vfH:"Confirm your email",vfP:"We sent a code to",vfCode:"Code from the email",vfBtn:"Confirm",vfResend:"Send a new code",vfChange:"Change email",contact:"Contact",nameLock:"Your name cannot be changed here. If it is wrong, contact the camp:",eg:"e.g.",loginH:"Log in",loginP:"Enter your email. We will send you a code so we know it is you.",loginSend:"Send code by email",yourCode:"Your code",noUser:"I do not have an account yet",backPart:"← Back to participant",signupH:"Sign up",signupP:"Enter your name, email and the code from your confirmation.",codeConf:"Camp code",createMe:"Create my account",haveUser:"I already have an account",staffLink:"Instructor, shop or organizer? Log in here",setupH:"First, a bit about your gear",setupP:"The shops use this to find the right skis for you.",bootLbl:"Ski boot size – length in mm",howRead:"? How do I read it",unknown:"Do not know yet",saveGo:"Save and continue",later:"Fill in later"},de:{help:"Hilfe",login:"Anmelden",email:"Deine E-Mail",sendCode:"Code senden",code:"Code aus deiner E-Mail",enter:"Weiter",home:"Start",skis:"Ski",ws:"Workshops",week:"Programm",info:"Info",scan:"Ski scannen",scanning:"QR-Code wird gescannt …",onNow:"Du hast gerade",tried:"Meine getesteten Ski",handIn:"Ich gebe zurück",waitShop:"Warten auf das Geschäft",rate:"Bewerten",note:"Kurze Notiz (optional)",save:"Speichern",enroll:"Anmelden",full:"Voll – auf die Warteliste",waiting:"Auf der Warteliste",cancel:"Abmelden",going:"Du bist angemeldet",level:"Niveau",all:"Alle",who:"Weitere Teilnehmer (Namen)",profile:"Mein Profil",name:"Name",boot:"Schuhlänge (mm)",z:"Z-Wert",consent:"Ich bin damit einverstanden, dass Veranstalter, Skigeschäfte und die anderen in meiner Gruppe meinen Namen sehen. Der Veranstalter speichert auch meine E-Mail. Du kannst die Einwilligung jederzeit widerrufen oder dein Konto löschen.",priv:"Wir speichern nur Name, Schuhlänge (mm) und Z-Wert. Die Daten werden 90 Tage nach Ende des Camps gelöscht.",offline:"Kein Netz – deine Eingaben werden gespeichert und später gesendet",g1:"1. Scanne den Ski mit deinem Handy.",g2:"2. Gib den Ski im Geschäft zurück – sie bestätigen in der App.",g3:"3. Bewerte den Ski.",g4:"4. Melde dich für Workshops und Events an.",ok:"Verstanden",confirm:"Rückgabe bestätigen",shopTitle:"Geschäft: Rückgabe",dash:"Überblick",instr:"Meine Gruppen",checkin:"Einchecken",push:"Nachricht an alle senden",send:"Senden",admin:"Admin",open:"Öffnet",emerg:"Notruf: 112 (Österreich). Bergrettung: 140",blocked:"Gib zuerst deine aktuellen Ski zurück.",newSki:"Ski anlegen",camp:"Name und Aussehen des Camps",color:"Farbe des Camps",logo:"Logo hochladen",qr:"QR-Bogen drucken",lang:"Sprache",rateRem:"Bitte bewerte",vfH:"E-Mail bestätigen",vfP:"Wir haben einen Code gesendet an",vfCode:"Code aus der E-Mail",vfBtn:"Bestätigen",vfResend:"Neuen Code senden",vfChange:"E-Mail ändern",contact:"Kontakt",nameLock:"Dein Name kann hier nicht geändert werden. Bei einem Fehler wende dich an das Camp:",eg:"z. B.",loginH:"Anmelden",loginP:"Gib deine E-Mail ein. Wir senden dir einen Code, damit wir wissen, dass du es bist.",loginSend:"Code per E-Mail senden",yourCode:"Dein Code",noUser:"Ich habe noch kein Konto",backPart:"← Zurück zu Teilnehmer",signupH:"Registrieren",signupP:"Gib deinen Namen, deine E-Mail und den Code aus deiner Bestätigung ein.",codeConf:"Camp-Code",createMe:"Konto erstellen",haveUser:"Ich habe schon ein Konto",staffLink:"Instruktor, Geschäft oder Veranstalter? Hier anmelden",setupH:"Zuerst etwas zu deiner Ausrüstung",setupP:"Die Geschäfte nutzen das, um die richtigen Ski für dich zu finden.",bootLbl:"Skischuhgröße – Länge in mm",howRead:"? Wie lese ich das ab",unknown:"Weiß ich noch nicht",saveGo:"Speichern und weiter",later:"Später ausfüllen"}};
 const LANGN={da:"Dansk",en:"English",de:"Deutsch"};
@@ -87,7 +104,7 @@ function render(){saveSess();
  if(!S.camp&&S.role!="Platform"){S.user=null;S.auth="login";a.innerHTML=`<main>${authView()}<div style="height:72px"></div></main>${langPick()}`;return}
  if(S.setup&&S.role=="Deltager"){a.innerHTML=`<header><b>${S.camp}</b></header><main>${setupView()}</main>${modal()}`;return}
  const tabs=S.role=="Deltager"?[["home","🏠",t("home")],["skis","⛷️",t("skis")],["ws","📅",t("ws")],["week","📋",t("week")],["info","ℹ️",t("info")]]:
-  S.role=="Skiforretning"?[["shop","✅","Aflevering"],["myski","⛷️","Mine ski"],["newski","🏷️","Opret ski"],["dash","📊",t("dash")],["team","👥","Team"]]:S.role=="Instruktør"?[["inst","👥",t("instr")],["iprog","📋","Program"]]:S.role=="Platform"?[["plat","🛠️","Platform"]]:[["adm","⚙️","Oversigt"],["prev","👁️","Deltager-visning"]];
+  S.role=="Skiforretning"?[["shop","📷","Scan"],["myski","⛷️","Mine ski"],["newski","🏷️","Opret ski"],["dash","📊",t("dash")],["team","👥","Team"]]:S.role=="Instruktør"?[["inst","👥",t("instr")],["iprog","📋","Program"]]:S.role=="Platform"?[["plat","🛠️","Platform"]]:[["adm","⚙️","Oversigt"],["prev","👁️","Deltager-visning"]];
  if(!tabs.find(x=>x[0]==S.tab))S.tab=tabs[0][0];
  a.innerHTML=`${S.online?(S.syncing?`<div class="off">Sender dine valg …</div>`:""):`<div class="off">${t("offline")}</div>`}${S.sup?supBar():demoBar()}<header><b>${S.camp||"Platform"}</b>${S.role!="Deltager"&&S.role!="Platform"&&!S.sup?`<button class="help" onclick="logout()">Log ud</button>`:""}</header>
  <main>${view()}</main><nav>${tabs.map(x=>`<button class="${S.tab==x[0]?"on":""}" onclick="S.tab='${x[0]}';render()"><span>${x[1]}</span>${x[2]}</button>`).join("")}</nav>${modal()}`;
@@ -437,4 +454,4 @@ function applyTr(){if(S.lang=="da"||!S.lang)return;const r=document.getElementBy
 const render0=render;render=function(){render0();applyTr()};
 
 loadSess();render();
-</script><script src="legal.js?v=20261116f"></script><script src="live.js?v=20261116h"></script></body></html>
+</script><script src="legal.js?v=20261116f"></script><script src="live.js?v=20261116i"></script></body></html>
