@@ -228,6 +228,7 @@
   const wsRow=(x,kind)=>{const p=(x.tm||"").split(" ");return {id:idOf(x),camp_id:CID(),title:x.t,kind,level:x.lv||null,day:p[0],start_time:p[1]||null,duration_min:x.dur||120,max_seats:x.max||10,instructor_name:x.ins||null,instructor_email:x.ins?emailOfIns(x.ins):null,recommended_ski:x.sk||null,group_code:x.code||null,meeting_point:x.mp||null,deleted:!!x.gone}};
   const skiStatus=x=>x.bad=="Skadet"?"skadet":x.bad=="Mistet"?"mistet":x.st=="ude"?"ude":"inde";
   // Hver samling: hvem må skrive, hvordan rækker bygges, og hvordan de læses tilbage
+  const nn=v=>(v===""||v==null||v=="–"||isNaN(+v))?null:+v;
   const SPEC=[
     {n:"levels",tbl:"levels",key:"name",conflict:"camp_id,name",can:()=>isOrg(),
       rows:()=>S.lvls.slice(1).map((n,i)=>({camp_id:CID(),name:n,sort:i}))},
@@ -246,7 +247,7 @@
     {n:"ev",tbl:"workshops",key:"id",can:()=>isOrg(),
       rows:()=>S.ev.map(x=>({...wsRow({t:x.t,tm:x.tm,max:500},"Event"),id:idOf(x)}))},
     {n:"skis",tbl:"skis",key:"id",can:()=>isOrg()||isShop(),
-      rows:()=>S.skilist.filter(x=>!x.gone&&x.id&&(!isShop()||x.sh==S.shop)).map(x=>{const sid=shopIdByName(x.sh);return sid?{id:idOf(x),camp_id:CID(),code:x.id,shop_id:sid,brand:x.br,model:x.m,length_cm:+x.l,radius_m:+x.r,width_mm:+x.b,level:x.lv||null}:null}).filter(Boolean)},
+      rows:()=>S.skilist.filter(x=>!x.gone&&x.id&&(!isShop()||x.sh==S.shop)).map(x=>{const sid=shopIdByName(x.sh);return sid?{id:idOf(x),camp_id:CID(),code:x.id,shop_id:sid,brand:x.br,model:x.m,length_cm:nn(x.l),radius_m:nn(x.r),width_mm:nn(x.b),level:x.lv||null,kind:x.k||"Ski",size:x.sz||null}:null}).filter(Boolean)},
     {n:"skiSt",tbl:"skis",key:"id",can:()=>isOrg()||isShop(),updateOnly:()=>true,noDelete:true,fresh:r=>r.status!="inde"||!!r.note,
       rows:()=>S.skilist.filter(x=>!x.gone&&x.id&&(!isShop()||x.sh==S.shop)&&shopIdByName(x.sh)).map(x=>({id:idOf(x),status:skiStatus(x),note:x.badNote||null}))}
   ];
@@ -347,9 +348,9 @@
       return {id:i+1,_id:x.id,t:x.title,lv:x.level||"",tm:x.day+" "+hhmm(x.start_time),ts:x.starts_at?Date.parse(x.starts_at):null,dur:x.duration_min,max:x.max_seats,ins:x.instructor_name||"",sk:x.recommended_ski||"",code:(m&&m.group_code)||x.group_code||undefined,mp:x.meeting_point||"Se programmet",n:cnt.get(x.id)||0,en:m?1:0,gs:m?1+ex.length:0,gn:ex,fav:fav.has(x.id)?1:0,_fsent:fav.has(x.id)?1:0,pax,wait:[],ro:[]}});
     S.ev=(ws.data||[]).filter(x=>x.kind=="Event"&&x.day).map(x=>({_id:x.id,t:x.title,tm:x.day+" "+hhmm(x.start_time)}));
     const shopName=id=>{const z=S.shops.find(q=>q._id==id);return z?z.n:""};
-    S.skilist=(sk.data||[]).map(x=>({_id:x.id,id:x.code,sh:shopName(x.shop_id),br:x.brand,m:x.model,l:String(x.length_cm),r:String(x.radius_m),b:String(x.width_mm),lv:x.level||"",st:x.status=="ude"?"ude":"inde",bad:x.status=="skadet"?"Skadet":x.status=="mistet"?"Mistet":null,badNote:x.note||"",by:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).name||"",_hand:!!x.handed_in_at,_lent:x.lent_to}));
+    S.skilist=(sk.data||[]).map(x=>({_id:x.id,id:x.code,sh:shopName(x.shop_id),br:x.brand,m:x.model,k:x.kind||"Ski",sz:x.size||"",l:x.length_cm==null?"–":String(x.length_cm),r:x.radius_m==null?"–":String(x.radius_m),b:x.width_mm==null?"–":String(x.width_mm),lv:x.level||"",st:x.status=="ude"?"ude":"inde",bad:x.status=="skadet"?"Skadet":x.status=="mistet"?"Mistet":null,badNote:x.note||"",by:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).name||"",_hand:!!x.handed_in_at,_lent:x.lent_to}));
     S.pending=S.skilist.filter(x=>x._hand&&(isOrg()||(isShop()&&x.sh==S.shop)||(S.role=="Deltager"&&x._lent==S.liveUid))).map(x=>x.id);
-    if(S.role=="Deltager"){const rt=new Map((mrt.data||[]).map(q=>[q.ski_id,q.stars]));S.ski=(mln.data||[]).map(l=>{const k=S.skilist.find(z=>z._id==l.ski_id);if(!k)return null;const st=rt.get(l.ski_id)||0;return {id:k.id,_sid:k._id,b:k.br,m:k.m,l:k.l,rad:k.r,w:k.b,st:l.back_at?"ind":"ude",r:st,rsent:st}}).filter(Boolean)}
+    if(S.role=="Deltager"){const rt=new Map((mrt.data||[]).map(q=>[q.ski_id,q.stars]));S.ski=(mln.data||[]).map(l=>{const k=S.skilist.find(z=>z._id==l.ski_id);if(!k)return null;const st=rt.get(l.ski_id)||0;return {id:k.id,_sid:k._id,k:k.k,sz:k.sz,b:k.br,m:k.m,l:k.l,rad:k.r,w:k.b,st:l.back_at?"ind":"ude",r:st,rsent:st}}).filter(Boolean)}
     baseline();
     if(isOrg()&&!(lv.data&&lv.data.length))LAST.levels=new Map();
     saveSnap();tickNow();
@@ -446,14 +447,15 @@
     if(!navigator.onLine)q={error:{message:"Failed to fetch"}};else{try{q=await sb.rpc("lend_ski",{p_code:v})}catch(e){q={error:{message:"Failed to fetch"}}}}
     if(q.error&&isNet(q.error)){
       const k=skiByCode(v);
+      if(k&&S.ski.some(z=>z.st=="ude"&&(z.k||"Ski")==(k.k||"Ski"))){S.ierr="Aflever først dit nuværende udstyr af samme type ("+(k.k||"Ski")+").";S.modal={ski:1};render();return false}
       if(!k||k.st!="inde"||k.bad){S.ierr="Du er offline, og vi kan ikke se, om skien er ledig. Prøv igen med forbindelse.";S.modal={ski:1};render();return false}
-      enqueue("lend_ski",{p_code:v});k.st="ude";S.ski.unshift({id:k.id,_sid:k._id,b:k.br,m:k.m,l:k.l,rad:k.r,w:k.b,st:"ude",r:0,pend:1});S.modal=null;S.ierr="";toast("Gemt. Sendes, når du har forbindelse.");render();return true;
+      enqueue("lend_ski",{p_code:v});k.st="ude";S.ski.unshift({id:k.id,_sid:k._id,k:k.k,sz:k.sz,b:k.br,m:k.m,l:k.l,rad:k.r,w:k.b,st:"ude",r:0,pend:1});S.modal=null;S.ierr="";toast("Gemt. Sendes, når du har forbindelse.");render();return true;
     }
     if(q.error){S.ierr=errm(q.error);S.modal={ski:1};render();return false}
     S.modal=null;S.ierr="";await loadCampData(true);toast("Skien er tilføjet ✓");render();return true;
   }
   idGo=async function(){lendCode(codeOf_(($("#sid").value||"")))};
-  scan=function(){if(S.ski.some(k=>k.st=="ude")){toast(t("blocked"));return}S.ierr="";camOpen("lend")};
+  scan=function(){S.ierr="";camOpen("lend")};
   handIn=async function(id){
     const k=skiByCode(id);if(!k)return;
     const q=await rpcQ("hand_in",{p_ski:k._id},"hi"+k._id);
