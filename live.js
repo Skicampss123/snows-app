@@ -14,6 +14,7 @@
   const DKEYS=["instr","staff","skilist","shops","prog","ski","ws","ev","pending","badLog","news","parts","orgs","ret","log","grp","contact","ih","prof","sted","lvls","wf","sf"];
   const ADMIN_EMAIL="skicamppppp@voresapp.dk"; // rigtig admin-konto: kodeordet står kun i Supabase, aldrig her
   function emptyState(){
+    S.brand={a:"",h:""};S.bd=null;try{applyBrand("","")}catch(e){}
     S.instr=[];S.staff=[];S.skilist=[];S.shops=[];S.prog=[];S.ski=[];S.ws=[];S.ev=[];S.pending=[];S.badLog=[];S.news=[];S.parts=[];S.orgs=[];S.ret={};S.log=[];S.grp=[];
     S.contact={n:"",p:"",e:"",t:""};S.ih={mp:"",pax:[],wait:[]};S.prof={name:"",e:"",boot:"",z:"",camp:""};S.sted={pl:"",lift:"",mp:""};
     S.lvls=["Alle","Begynder","Let øvet","Øvet","Pro"];S.sf={l:"",r:"",b:"",lv:""};S.placeOk=false;S.ski=[];S.pending=[];
@@ -315,7 +316,7 @@
   async function loadCampData(quiet){
     const cid=S.liveCampId;if(!cid)return;
     const [camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt,wcn,wen,wfv,ros]=await Promise.all([
-      sb.from("camps").select("name,code,contact,info,start_date,tz").eq("id",cid).maybeSingle(),
+      sb.from("camps").select("name,code,contact,info,start_date,tz,color,color2").eq("id",cid).maybeSingle(),
       sb.from("levels").select("name,sort").eq("camp_id",cid).order("sort"),
       sb.from("shops").select("id,name,brands,return_time,long_hours").eq("camp_id",cid).order("name"),
       sb.from("program_items").select("*").eq("camp_id",cid),
@@ -333,7 +334,7 @@
     ]);
     const bad=[camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt,wcn,wen,wfv,ros].find(x=>x.error);
     if(bad){if(!quiet)S.toast="Campens indhold kunne ikke hentes: "+errm(bad.error);return}
-    if(camp.data){S.campStart=camp.data.start_date||null;S.tz=camp.data.tz||"Europe/Vienna";applyDN();S.contact=Object.assign({n:"",p:"",e:"",t:""},camp.data.contact||{});S.sted=Object.assign({pl:"",lift:"",mp:""},camp.data.info||{});S.placeOk=!!(S.sted.pl||S.sted.lift||S.sted.mp)}
+    if(camp.data){S.brand={a:camp.data.color||"",h:camp.data.color2||""};if(!S.bd)applyBrand(S.brand.a,S.brand.h);S.campStart=camp.data.start_date||null;S.tz=camp.data.tz||"Europe/Vienna";applyDN();S.contact=Object.assign({n:"",p:"",e:"",t:""},camp.data.contact||{});S.sted=Object.assign({pl:"",lift:"",mp:""},camp.data.info||{});S.placeOk=!!(S.sted.pl||S.sted.lift||S.sted.mp)}
     const DEF=["Begynder","Let øvet","Øvet","Pro"];
     S.lvls=["Alle",...((lv.data&&lv.data.length)?lv.data.map(x=>x.name):DEF)];
     S.shops=(sh.data||[]).map(x=>({_id:x.id,n:x.name,c:"",e:((inv.data||[]).find(i=>i.shop_id==x.id)||{}).email||"",brands:(x.brands&&x.brands.length)?x.brands:undefined}));
@@ -528,6 +529,7 @@
     rtCid=S.liveCampId;
     try{rtCh=sb.channel("pulse-"+rtCid).on("postgres_changes",{event:"*",schema:"public",table:"camp_pulse",filter:"camp_id=eq."+rtCid},()=>rtKick())
       .subscribe(st=>{rtOk=(st=="SUBSCRIBED");if(rtOk)rtKick()})}catch(e){rtCh=null}}
+  const _svb=saveBrand;saveBrand=async function(){const b=Object.assign({a:"",h:""},brandCur());const r=await sb.from("camps").update({color:b.a||null,color2:b.h||null}).eq("id",CID());if(r.error){toast("Farverne kunne ikke gemmes: "+errm(r.error));return}_svb()};
   window.rtIsOn=()=>rtOk;
   const _lcdRt=loadCampData;loadCampData=async function(q){const x=await _lcdRt(q);try{rtStart()}catch(e){}return x};
   // Reserve: hent også med jævne mellemrum (hvert 20. sek. uden realtid, hvert minut med)
@@ -577,7 +579,7 @@
 
   // ───── Gem kopi til offline brug ─────
   const SNK=()=>"snows_snap_"+(S.liveUid||"x");
-  const SNAP=["skilist","ws","prog","news","shops","instr","contact","sted","lvls","ski","pending","ret","prof"];
+  const SNAP=["brand","skilist","ws","prog","news","shops","instr","contact","sted","lvls","ski","pending","ret","prof"];
   function saveSnap(){
     if(!S.liveUid||S.sup)return;
     try{const o={role:S.role,camp:S.camp,who:S.who,shop:S.shop,campId:S.liveCampId,campStart:S.campStart,tz:S.tz,t:Date.now(),state:{}};SNAP.forEach(k=>o.state[k]=S[k]);localStorage.setItem(SNK(),JSON.stringify(o))}catch(e){}
@@ -585,7 +587,7 @@
   function restoreSnap(uid){
     try{
       const o=JSON.parse(localStorage.getItem("snows_snap_"+uid)||"null");if(!o||!o.role)return false;
-      S.liveUid=uid;S.liveCampId=o.campId;SNAP.forEach(k=>{if(o.state[k]!==undefined)S[k]=o.state[k]});S.campStart=o.campStart;S.tz=o.tz;applyDN();
+      S.liveUid=uid;S.liveCampId=o.campId;SNAP.forEach(k=>{if(o.state[k]!==undefined)S[k]=o.state[k]});applyBrand((S.brand||{}).a,(S.brand||{}).h);S.campStart=o.campStart;S.tz=o.tz;applyDN();
       enter({role:o.role,camp:o.camp,who:o.who,shop:o.shop});S.setup=false;S.online=false;S.vf=null;S.auth="login";render();return true;
     }catch(e){return false}
   }
