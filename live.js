@@ -686,7 +686,7 @@
   };
   window.pushLater=()=>{lsSet("snows_push_"+S.liveUid,"later");render()};
   function pushCard(){
-    if(S.role!="Deltager"||S.sup||lsGet("snows_push_"+S.liveUid))return "";
+    if((S.role!="Deltager"&&S.role!="Instruktør")||S.sup||lsGet("snows_push_"+S.liveUid))return "";
     if(!pushOk()){
       if(isIOS()&&!isStandalone())return `<div class="card"><h3>${esc(tr("Få beskeder"))}</h3><div class="mut">${esc(tr("På iPhone: tryk på Del-knappen og vælg Føj til hjemmeskærm. Åbn så appen derfra for at få beskeder."))}</div><button class="btn alt" onclick="pushLater()">${esc(tr("Ikke nu"))}</button></div>`;
       return "";
@@ -724,6 +724,7 @@
     let h=_vw4();
     if(!S.live||typeof h!="string")return h;
     if(S.role=="Deltager"&&S.tab=="home")h=pushCard()+msgCard()+h;
+    if(S.role=="Instruktør"&&S.tab=="inst")h=pushCard()+msgCard()+h;
     if(S.role=="Deltager"&&S.tab=="info")h+=`<div class="card"><h3>${esc(tr("Dine oplysninger"))}</h3>${legalLinks()}</div>`;
     if(/delAcc\(\)">Slet min konto<\/button>/.test(h))h=h.replace(/(<button[^>]*delAcc\(\)">Slet min konto<\/button>)/,`<button class="btn alt" onclick="myData()">${esc(tr("Hent mine data"))}</button>$1`).replace(/(<\/div>`?)$/,"$1");
     return h;
@@ -933,7 +934,7 @@
   window.lbOpen=function(){S.lb=undefined;S.modal={lbm:1};render()};
   // ───── Små detaljer: lyd, vibration, træk for at opdatere, minut-opdatering ─────
   let AC=null;
-  window.fx=function(kind){try{if(navigator.vibrate)navigator.vibrate(kind=="err"?[60,70,60]:30)}catch(e){}
+  window.fx=function(kind){if(!sndOn())return;try{if(navigator.vibrate)navigator.vibrate(kind=="err"?[60,70,60]:30)}catch(e){}
     try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state=="suspended")AC.resume();
       const t0=AC.currentTime+.01,notes=kind=="err"?[[392,0],[330,.14]]:kind=="ok2"?[[659,0]]:[[784,0],[1047,.11]];
       const master=AC.createGain();master.gain.value=.5;master.connect(AC.destination);
@@ -963,7 +964,7 @@
     try{const q=await sb.functions.invoke("send-push",{body:{title:m.t,body:m.x||"",user_ids:d.user_ids||[]}});
       if(q.error){pushTxt=" ("+tr("push kunne ikke sendes")+")"}else{const n=q.data&&typeof q.data.sent=="number"?q.data.sent:null;pushTxt=n>0?" · "+tr("Push-besked sendt til")+" "+n+" "+tr("enheder"):" · "+tr("ingen telefoner har slået push til")}}catch(e){pushTxt=" ("+tr("push kunne ikke sendes")+")"}
     toast(tr("Sendt til")+" "+d.count+" "+tr("deltagere")+pushTxt+" ✓")};
-  async function msgLoad(){if(S.role!="Deltager"||!S.liveUid)return;const r=await sb.rpc("my_messages");if(!r.error){S.msgs=r.data||[]}}
+  async function msgLoad(){if((S.role!="Deltager"&&S.role!="Instruktør")||!S.liveUid)return;const r=await sb.rpc("my_messages");if(!r.error){S.msgs=r.data||[]}}
   const _lcd=loadCampData;loadCampData=async function(q){const x=await _lcd(q);try{await msgLoad()}catch(e){}return x};
   const seenKey=()=>"snows_msgseen_"+S.liveUid;
   const seenAt=()=>{try{return localStorage.getItem(seenKey())||""}catch(e){return ""}};
@@ -976,7 +977,7 @@
     if(m&&m.msgs){return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>📩 ${tr("Beskeder")}</h3>${(S.msgs||[]).map(x=>`<div style="border-top:1px solid var(--line);padding:8px 0"><b>${esc(x.title)}</b>${x.body?`<div class="mut">${esc(x.body)}</div>`:""}<div class="mut" style="font-size:12px">${fmtD(x.created_at)}</div></div>`).join("")}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
     if(m&&m.gm){const aud=m.aud,wsOpts=(S.ws||[]).filter(w=>w._id).map(w=>`<option value="${w._id}" ${m.ref==w._id?"selected":""}>${esc(w.t)} · ${esc(w.tm)}</option>`).join(""),shOpts=(S.shops||[]).filter(s=>s._id).map(s=>`<option value="${s._id}" ${m.ref==s._id?"selected":""}>${esc(s.n)}</option>`).join("");
       return `<div class="modal"><div class="card" style="max-height:90vh;overflow:auto"><h3>${tr("Besked til en gruppe")}</h3><div class="mut">${tr("Beskeden vises i deltagernes app og sendes som push til dem, der har slået beskeder til.")}</div>
-      <select id="gm_a" onchange="gmAud()"><option value="all" ${aud=="all"?"selected":""}>${tr("Alle deltagere")}</option><option value="ws" ${aud=="ws"?"selected":""}>${tr("Et bestemt hold")}</option><option value="out" ${aud=="out"?"selected":""}>${tr("Alle med udstyr ude")}</option><option value="shop" ${aud=="shop"?"selected":""}>${tr("Lånere hos en butik")}</option></select>
+      <select id="gm_a" onchange="gmAud()"><option value="all" ${aud=="all"?"selected":""}>${tr("Alle deltagere")}</option><option value="ws" ${aud=="ws"?"selected":""}>${tr("Et bestemt hold")}</option><option value="instr" ${aud=="instr"?"selected":""}>${tr("Alle instruktører")}</option><option value="out" ${aud=="out"?"selected":""}>${tr("Alle med udstyr ude")}</option><option value="shop" ${aud=="shop"?"selected":""}>${tr("Lånere hos en butik")}</option></select>
       ${aud=="ws"?`<select id="gm_r"><option value="">${tr("Vælg hold")}</option>${wsOpts}</select>`:""}${aud=="shop"?`<select id="gm_r"><option value="">${tr("Vælg butik")}</option>${shOpts}</select>`:""}
       <input id="gm_t" maxlength="120" placeholder="${tr("Overskrift")}" value="${esc(m.t||"")}"><textarea id="gm_x" rows="4" maxlength="1000" placeholder="${tr("Besked")}">${esc(m.x||"")}</textarea>
       <button class="btn" onclick="gmSend()" ${m.busy?"disabled":""}>${m.busy?tr("Sender …"):tr("Send besked")}</button><button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button>
