@@ -233,7 +233,7 @@
     {n:"levels",tbl:"levels",key:"name",conflict:"camp_id,name",can:()=>isOrg(),
       rows:()=>S.lvls.slice(1).map((n,i)=>({camp_id:CID(),name:n,sort:i}))},
     {n:"shops",tbl:"shops",key:"id",can:()=>isOrg()||isShop(),updateOnly:()=>isShop(),
-      rows:()=>S.shops.filter(x=>!isShop()||x.n==S.shop).map(x=>isShop()?{id:idOf(x),return_time:S.ret[x.n]||null}:{id:idOf(x),camp_id:CID(),name:x.n,brands:(x.brands&&x.brands.length)?x.brands:[x.n],return_time:S.ret[x.n]||null})},
+      rows:()=>S.shops.filter(x=>!isShop()||x.n==S.shop).map(x=>isShop()?{id:idOf(x),return_time:S.ret[x.n]||null,long_hours:(S.lh||{})[x.n]||8}:{id:idOf(x),camp_id:CID(),name:x.n,brands:(x.brands&&x.brands.length)?x.brands:[x.n],return_time:S.ret[x.n]||null})},
     {n:"shopInv",tbl:"invites",key:"email",conflict:"camp_id,email",can:()=>isOrg(),
       rows:()=>S.shops.filter(x=>x.e).map(x=>({camp_id:CID(),email:x.e.toLowerCase(),role:"Skiforretning",name:x.n,shop_id:idOf(x)}))},
     {n:"insInv",tbl:"invites",key:"email",conflict:"camp_id,email",can:()=>isOrg(),
@@ -317,7 +317,7 @@
     const [camp,lv,sh,pr,nw,ws,sk,inv,bor,mln,mrt,wcn,wen,wfv,ros]=await Promise.all([
       sb.from("camps").select("name,code,contact,info,start_date,tz").eq("id",cid).maybeSingle(),
       sb.from("levels").select("name,sort").eq("camp_id",cid).order("sort"),
-      sb.from("shops").select("id,name,brands,return_time").eq("camp_id",cid).order("name"),
+      sb.from("shops").select("id,name,brands,return_time,long_hours").eq("camp_id",cid).order("name"),
       sb.from("program_items").select("*").eq("camp_id",cid),
       sb.from("news").select("*").eq("camp_id",cid).order("created_at",{ascending:false}),
       sb.from("workshops").select("*").eq("camp_id",cid).eq("deleted",false),
@@ -337,7 +337,7 @@
     const DEF=["Begynder","Let øvet","Øvet","Pro"];
     S.lvls=["Alle",...((lv.data&&lv.data.length)?lv.data.map(x=>x.name):DEF)];
     S.shops=(sh.data||[]).map(x=>({_id:x.id,n:x.name,c:"",e:((inv.data||[]).find(i=>i.shop_id==x.id)||{}).email||"",brands:(x.brands&&x.brands.length)?x.brands:undefined}));
-    S.ret={};(sh.data||[]).forEach(x=>{if(x.return_time)S.ret[x.name]=hhmm(x.return_time)});
+    S.ret={};S.lh={};(sh.data||[]).forEach(x=>{if(x.return_time)S.ret[x.name]=hhmm(x.return_time);S.lh[x.name]=x.long_hours||8});
     S.instr=(inv.data||[]).filter(i=>i.role=="Instruktør").map(i=>({n:i.name||i.email,c:"",e:i.email}));
     S.prog=(pr.data||[]).map(x=>({_id:x.id,d:x.day,tm:hhmm(x.time),to:x.time_to?hhmm(x.time_to):undefined,t:x.title,pl:x.place||""}));
     S.news=(nw.data||[]).map(x=>({_id:x.id,t:x.title,x:x.body||"",d:x.label||""}));
@@ -867,8 +867,7 @@
     if(x.zv)parts.push((short?"":tr("Indstil bindingen til")+" ")+"Z "+nz(x.zv));
     if(x.bo)parts.push((short?"":tr("Støvlestørrelse")+" ")+(short?"støvle ":"")+x.bo+" mm");
     return parts.length?parts.join(" · "):tr("Støvlestørrelse og Z-værdi er ikke udfyldt endnu.")};
-  const LONG_H=8;
-  window.outTxt=function(x){if(x.st!="ude"||!x.la)return null;const m=Math.max(0,Math.floor((Date.now()-Date.parse(x.la))/60000)),h=Math.floor(m/60),mm=m%60;return {m,txt:(h?h+" t ":"")+mm+" min",long:m>=LONG_H*60}};
+  window.outTxt=function(x){if(x.st!="ude"||!x.la)return null;const m=Math.max(0,Math.floor((Date.now()-Date.parse(x.la))/60000)),h=Math.floor(m/60),mm=m%60;return {m,txt:(h?h+" t ":"")+mm+" min",long:m>=((S.lh||{})[x.sh]||8)*60}};
   window.setupBox=function(x){const o=outTxt(x),t=x.by?setupTxt(x):"";if(!t&&!o)return "";const ok=x.zv||x.bo;
     return (o?`<div class="mut" style="margin:6px 0">⏱ ${tr("Ude i")} <b>${o.txt}</b>${o.long?` <span class="tag w">${tr("usædvanligt længe")}</span>`:""}</div>`:"")+(t?`<div style="margin:8px 0;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,${ok?"var(--acc)":"var(--mut)"} 14%,transparent)"><b>${ok?"🔧 ":""}${esc(t)}</b></div>`:"")};
   // ───── Fejllog: telefonerne melder uventede fejl til platformen ─────
