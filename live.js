@@ -372,12 +372,12 @@
   function shopDash(){
     loadStats();
     const d=SST.d;
-    const head=`<h2>${t("dash")}</h2><div class="mut">Kun jeres egne ski${S.shop?" ("+esc(S.shop)+")":""}.</div>`;
+    const head=`<h2>${t("dash")}</h2><div class="mut">Kun jeres eget udstyr${S.shop?" ("+esc(S.shop)+")":""}.</div>`;
     if(SST.err)return head+`<div class="card" style="border-color:var(--acc)">Tallene kunne ikke hentes: ${esc(SST.err)}</div><button class="btn alt" onclick="statsRefresh()">Opdatér</button>`;
     if(!d)return head+`<div class="mut">Henter tal …</div>`;
     const tile=(big,txt)=>`<div class="card"><div class="big">${big}</div>${txt}</div>`;
     const rows=(d.models||[]).map(m=>`<div class="card"><b>${esc(m.brand)} ${esc(m.model)}</b><div class="mut">${m.skis} ski · ${m.loans} gange udlånt</div><div style="color:var(--acc);font-size:18px">${m.ratings?stars(m.avg)+' <span class="mut" style="font-size:14px">('+m.ratings+' stjerner givet)</span>':'<span class="mut" style="font-size:14px">Ingen stjerner endnu</span>'}</div></div>`).join("");
-    return head+tile(d.total_loans,"udlån i alt")+tile(stars(d.avg_stars),d.rating_count?"gennemsnit af stjerner ("+d.rating_count+" givet)":"gennemsnit af stjerner (ingen endnu)")+tile(d.damaged,"ski skadet under vejs")+(d.lost?tile(d.lost,"ski mistet"):"")+`<h3>Modeller</h3>${rows||'<div class="mut">Ingen ski oprettet endnu.</div>'}<button class="btn alt" onclick="statsRefresh()">Opdatér</button><button class="btn" onclick="shopExport()">Hent Excel</button>`;
+    return head+tile(d.total_loans,"udlån i alt")+tile(stars(d.avg_stars),d.rating_count?"gennemsnit af stjerner ("+d.rating_count+" givet)":"gennemsnit af stjerner (ingen endnu)")+tile(d.damaged,"stk. skadet under vejs")+(d.lost?tile(d.lost,"stk. mistet"):"")+`<h3>Modeller</h3>${rows||'<div class="mut">Intet udstyr oprettet endnu.</div>'}<button class="btn alt" onclick="statsRefresh()">Opdatér</button><button class="btn" onclick="shopExport()">Hent Excel</button>`;
   }
   const _vw2=view;view=function(){return S.live&&S.role=="Skiforretning"&&S.tab=="dash"?shopDash():_vw2()};
 
@@ -402,7 +402,7 @@
     if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){toast(tr("Kameraet kan ikke bruges her. Skriv ID'et i stedet."));S.modal=mode=="ret"?{ret:1}:{ski:1};render();return}
     const el=document.createElement("div");
     el.style.cssText="position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column";
-    el.innerHTML=`<video playsinline muted autoplay style="flex:1;min-height:0;width:100%;object-fit:cover"></video><div style="position:absolute;left:50%;top:38%;width:62vmin;height:62vmin;transform:translate(-50%,-50%);border:3px solid #fff;border-radius:18px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)"></div><div style="padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:#111;color:#fff;text-align:center"><div id="cam_t" style="margin-bottom:10px">${esc(tr("Hold QR-koden på skien i rammen"))}</div><button class="btn" style="margin:0 0 8px" onclick="camManual()">${esc(tr("Skriv ID i stedet"))}</button><button class="btn alt" style="margin:0" onclick="camClose()">${esc(tr("Annuller"))}</button></div>`;
+    el.innerHTML=`<video playsinline muted autoplay style="flex:1;min-height:0;width:100%;object-fit:cover"></video><div style="position:absolute;left:50%;top:38%;width:62vmin;height:62vmin;transform:translate(-50%,-50%);border:3px solid #fff;border-radius:18px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)"></div><div style="padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:#111;color:#fff;text-align:center"><div id="cam_t" style="margin-bottom:10px">${esc(tr("Hold QR-koden på udstyret i rammen"))}</div><button class="btn" style="margin:0 0 8px" onclick="camManual()">${esc(tr("Skriv ID i stedet"))}</button><button class="btn alt" style="margin:0" onclick="camClose()">${esc(tr("Annuller"))}</button></div>`;
     document.body.appendChild(el);
     CAM={el,mode,stop:false};
     try{
@@ -442,17 +442,17 @@
   const skiByCode=c=>S.skilist.find(x=>String(x.id).toUpperCase()==String(c).toUpperCase()&&!x.gone);
   const codeOf_=t=>{const m=String(t||"").toUpperCase().match(/SK-[A-Z0-9]+/);return m?m[0]:String(t||"").trim().toUpperCase()};
   async function lendCode(v){
-    if(!v){S.ierr="Skriv ski-ID'et.";render();return false}
+    if(!v){S.ierr="Skriv ID'et.";render();return false}
     let q;
     if(!navigator.onLine)q={error:{message:"Failed to fetch"}};else{try{q=await sb.rpc("lend_ski",{p_code:v})}catch(e){q={error:{message:"Failed to fetch"}}}}
     if(q.error&&isNet(q.error)){
       const k=skiByCode(v);
       if(k&&S.ski.some(z=>z.st=="ude"&&(z.k||"Ski")==(k.k||"Ski"))){S.ierr="Aflever først dit nuværende udstyr af samme type ("+(k.k||"Ski")+").";S.modal={ski:1};render();return false}
-      if(!k||k.st!="inde"||k.bad){S.ierr="Du er offline, og vi kan ikke se, om skien er ledig. Prøv igen med forbindelse.";S.modal={ski:1};render();return false}
+      if(!k||k.st!="inde"||k.bad){S.ierr="Du er offline, og vi kan ikke se, om udstyret er ledigt. Prøv igen med forbindelse.";S.modal={ski:1};render();return false}
       enqueue("lend_ski",{p_code:v});k.st="ude";S.ski.unshift({id:k.id,_sid:k._id,k:k.k,sz:k.sz,b:k.br,m:k.m,l:k.l,rad:k.r,w:k.b,st:"ude",r:0,pend:1});S.modal=null;S.ierr="";toast("Gemt. Sendes, når du har forbindelse.");render();return true;
     }
     if(q.error){S.ierr=errm(q.error);S.modal={ski:1};render();return false}
-    S.modal=null;S.ierr="";await loadCampData(true);toast("Skien er tilføjet ✓");render();return true;
+    S.modal=null;S.ierr="";await loadCampData(true);toast("Udstyret er tilføjet ✓");render();return true;
   }
   idGo=async function(){lendCode(codeOf_(($("#sid").value||"")))};
   scan=function(){S.ierr="";camOpen("lend")};
@@ -474,20 +474,20 @@
   scanReturn=function(){S.ierr="";camOpen("ret")};
   async function retCode(v){
     const k=skiByCode(v);
-    if(!k||(isShop()&&k.sh!=S.shop)){S.ierr=isShop()?"Vi kan ikke finde en af jeres ski med det ID.":"Vi kan ikke finde en ski med det ID.";S.modal={ret:1};render();return}
+    if(!k||(isShop()&&k.sh!=S.shop)){S.ierr=isShop()?"Vi kan ikke finde noget af jeres udstyr med det ID.":"Vi kan ikke finde udstyr med det ID.";S.modal={ret:1};render();return}
     S.ierr="";S.modal={sc:S.skilist.indexOf(k)};render();
   }
   window.scDone=async function(i){const k=S.skilist[i],who=k.by;S.modal=null;await done(k.id);toast(k.br+" "+k.m+" er afleveret"+(who?" af "+who:"")+" ✓")};
   window.retGo=function(){retCode(codeOf_(($("#rid").value||"")))};
   const _md=modal;modal=function(){
-    if(S.modal&&S.modal.ret)return `<div class="modal"><div class="card"><h3>Find ski</h3><div class="mut">Skriv ID'et under QR-koden, fx SK-102.</div><input id="rid" placeholder="SK-" autocapitalize="characters">${S.ierr?`<div class="mut" style="color:var(--acc)">${esc(S.ierr)}</div>`:""}<button class="btn" onclick="retGo()">Find ski</button><button class="btn alt" onclick="S.modal=null;render()">Annuller</button></div></div>`;
+    if(S.modal&&S.modal.ret)return `<div class="modal"><div class="card"><h3>Find udstyr</h3><div class="mut">Skriv ID'et under QR-koden, fx SK-102.</div><input id="rid" placeholder="SK-" autocapitalize="characters">${S.ierr?`<div class="mut" style="color:var(--acc)">${esc(S.ierr)}</div>`:""}<button class="btn" onclick="retGo()">Find udstyr</button><button class="btn alt" onclick="S.modal=null;render()">Annuller</button></div></div>`;
     return _md();
   };
   // Butikkens aflevering: rigtige udlån
   const _vw3=view;view=function(){
     if(S.live&&S.role=="Skiforretning"&&S.tab=="shop"){
       const out=S.skilist.filter(x=>!x.gone&&x.sh==S.shop&&x.st=="ude").sort((a,b)=>(S.pending.includes(b.id)?1:0)-(S.pending.includes(a.id)?1:0));
-      return `<h2>${t("shopTitle")}</h2>${scanRetCard()}<h3>Udlånt lige nu (${out.length})</h3>${out.length?out.map(x=>`<div class="card"><h3>${esc(x.br)} ${esc(x.m)}</h3><div class="mut">${esc(x.id)} · ${x.by?esc(x.by):"ukendt låner"}${S.pending.includes(x.id)?" · <b>melder afleveret</b>":""}</div><button class="btn ${S.pending.includes(x.id)?"ok":"alt"}" onclick="done('${esc(x.id)}')">${t("confirm")}</button></div>`).join(""):`<p class="mut">Ingen af jeres ski er ude.</p>`}${shopRetCard()}`;
+      return `<h2>${t("shopTitle")}</h2>${scanRetCard()}<h3>Udlånt lige nu (${out.length})</h3>${out.length?out.map(x=>`<div class="card"><h3>${esc(x.br)} ${esc(x.m)}</h3><div class="mut">${esc(x.id)} · ${x.by?esc(x.by):"ukendt låner"}${S.pending.includes(x.id)?" · <b>melder afleveret</b>":""}</div><button class="btn ${S.pending.includes(x.id)?"ok":"alt"}" onclick="done('${esc(x.id)}')">${t("confirm")}</button></div>`).join(""):`<p class="mut">Intet af jeres udstyr er ude.</p>`}${shopRetCard()}`;
     }
     return _vw3();
   };
@@ -688,7 +688,7 @@
       if(isIOS()&&!isStandalone())return `<div class="card"><h3>${esc(tr("Få beskeder"))}</h3><div class="mut">${esc(tr("På iPhone: tryk på Del-knappen og vælg Føj til hjemmeskærm. Åbn så appen derfra for at få beskeder."))}</div><button class="btn alt" onclick="pushLater()">${esc(tr("Ikke nu"))}</button></div>`;
       return "";
     }
-    return `<div class="card" style="border-color:var(--acc)"><h3>${esc(tr("Få beskeder"))}</h3><div class="mut">${esc(tr("Få besked om dine hold og når skiene skal afleveres."))}</div><button class="btn" onclick="pushOn()">${esc(tr("Slå beskeder til"))}</button><button class="btn alt" onclick="pushLater()">${esc(tr("Ikke nu"))}</button></div>`;
+    return `<div class="card" style="border-color:var(--acc)"><h3>${esc(tr("Få beskeder"))}</h3><div class="mut">${esc(tr("Få besked om dine hold og når udstyret skal afleveres."))}</div><button class="btn" onclick="pushOn()">${esc(tr("Slå beskeder til"))}</button><button class="btn alt" onclick="pushLater()">${esc(tr("Ikke nu"))}</button></div>`;
   }
   // Arrangørens nyhed sendes også som push
   const _mgAdd=mgAdd;mgAdd=function(k){
@@ -901,8 +901,8 @@
       return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>${esc(x.br+" "+x.m)} · ${esc(x.id||"")}</h3><div class="mut">${tr("Historik")}</div>${m.err?`<div class="mut" style="color:var(--acc)">${esc(m.err)}</div>`:""}${m.rows==null?`<div class="mut">${tr("Henter …")}</div>`:(m.rows.length?m.rows.map(r=>`<div style="border-top:1px solid var(--line,#ddd);padding:8px 0"><b>${esc(r.borrower||"–")}</b><div class="mut">${tr("Ud")} ${dt(r.out_at)} · ${r.back_at?tr("Tilbage")+" "+dt(r.back_at):tr("Stadig ude")}</div>${r.stars?`<div style="color:var(--acc)">${"★".repeat(r.stars)}${"☆".repeat(5-r.stars)}</div>`:""}${r.comment?`<div class="mut">“${esc(r.comment)}”</div>`:""}</div>`).join(""):`<div class="mut">${tr("Ingen udlån endnu.")}</div>`)}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
     if(m&&m.sc!=null){const k=S.skilist[m.sc];if(!k){S.modal=null;return _md4()}
       const out=k.st=="ude";
-      return `<div class="modal"><div class="card" style="max-height:90vh;overflow:auto"><h3>${esc(k.br+" "+k.m)}</h3><div class="mut">${esc(k.id||"")} · ${esc(k.sh||"")}</div><div class="mut">${k.l} cm · radius ${k.r} m · ${k.b} mm · ${esc(k.lv||"")}</div><div style="margin:10px 0"><span class="tag ${out?"w":""}">${out?tr("Ude"):tr("Inde")}</span> ${k.bad?`<span class="tag w">${esc(k.bad)}</span>`:""}</div>${out&&k.by?`<div class="mut">${tr("Ude hos")} <b>${esc(k.by)}</b></div>`:""}${k.bad&&k.badNote?`<div class="mut">${esc(k.badNote)}</div>`:""}${out?`<button class="btn" onclick="scDone(${m.sc})">${tr("Markér som afleveret")}</button>`:(k.bad?"":`<button class="btn" onclick="lendOpen(${m.sc})">${tr("Lån ud til en deltager")}</button>`)}<button class="btn alt" onclick="S.modal={bd:${m.sc}};render()">${k.bad?tr("Skien er klar igen"):tr("Markér som skadet eller mistet")}</button><button class="btn alt" onclick="skiHist(${m.sc})">🕘 ${tr("Historik")}</button><button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
-    if(m&&m.cm){return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>${tr("Kommentarer til skiene")}</h3>${m.err?`<div class="mut" style="color:var(--acc)">${esc(m.err)}</div>`:""}${m.rows==null?`<div class="mut">${tr("Henter …")}</div>`:(m.rows.length?m.rows.map(r=>`<div style="border-top:1px solid var(--line,#ddd);padding:8px 0"><b>${esc(r.brand+" "+r.model)}</b> <span style="color:var(--acc)">${"★".repeat(r.stars)}</span><div class="mut">“${esc(r.comment)}”</div></div>`).join(""):`<div class="mut">${tr("Ingen kommentarer endnu.")}</div>`)}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
+      return `<div class="modal"><div class="card" style="max-height:90vh;overflow:auto"><h3>${esc(k.br+" "+k.m)}</h3><div class="mut">${esc(k.id||"")} · ${esc(k.sh||"")}</div><div class="mut">${k.l} cm · radius ${k.r} m · ${k.b} mm · ${esc(k.lv||"")}</div><div style="margin:10px 0"><span class="tag ${out?"w":""}">${out?tr("Ude"):tr("Inde")}</span> ${k.bad?`<span class="tag w">${esc(k.bad)}</span>`:""}</div>${out&&k.by?`<div class="mut">${tr("Ude hos")} <b>${esc(k.by)}</b></div>`:""}${k.bad&&k.badNote?`<div class="mut">${esc(k.badNote)}</div>`:""}${out?`<button class="btn" onclick="scDone(${m.sc})">${tr("Markér som afleveret")}</button>`:(k.bad?"":`<button class="btn" onclick="lendOpen(${m.sc})">${tr("Lån ud til en deltager")}</button>`)}<button class="btn alt" onclick="S.modal={bd:${m.sc}};render()">${k.bad?tr("Udstyret er klar igen"):tr("Markér som skadet eller mistet")}</button><button class="btn alt" onclick="skiHist(${m.sc})">🕘 ${tr("Historik")}</button><button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
+    if(m&&m.cm){return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>${tr("Kommentarer til udstyret")}</h3>${m.err?`<div class="mut" style="color:var(--acc)">${esc(m.err)}</div>`:""}${m.rows==null?`<div class="mut">${tr("Henter …")}</div>`:(m.rows.length?m.rows.map(r=>`<div style="border-top:1px solid var(--line,#ddd);padding:8px 0"><b>${esc(r.brand+" "+r.model)}</b> <span style="color:var(--acc)">${"★".repeat(r.stars)}</span><div class="mut">“${esc(r.comment)}”</div></div>`).join(""):`<div class="mut">${tr("Ingen kommentarer endnu.")}</div>`)}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
     if(m&&m.lend!=null){const x=S.skilist[m.lend];
       return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>${tr("Udlån")} ${esc(x.br+" "+x.m)}</h3><div class="mut">${esc(x.id||"")} · ${tr("Find deltageren")}</div>${srch()}${(m.res||[]).map(p=>`<div class="row" style="align-items:center;padding:6px 0"><span>${esc(p.name)}${p.email?`<div class="mut">${esc(p.email)}</div>`:""}</span><button class="chip" onclick="lendDo(${m.lend},'${p.id}')">${tr("Udlån")}</button></div>`).join("")}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
     if(m&&m.eu!=null){const w=S.ws[m.eu];
