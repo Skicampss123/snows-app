@@ -379,7 +379,7 @@
     const rows=(d.models||[]).map(m=>`<div class="card"><b>${esc(m.brand)} ${esc(m.model)}</b><div class="mut">${m.skis} ski · ${m.loans} gange udlånt</div><div style="color:var(--acc);font-size:18px">${m.ratings?stars(m.avg)+' <span class="mut" style="font-size:14px">('+m.ratings+' stjerner givet)</span>':'<span class="mut" style="font-size:14px">Ingen stjerner endnu</span>'}</div></div>`).join("");
     return head+tile(d.total_loans,"udlån i alt")+tile(stars(d.avg_stars),d.rating_count?"gennemsnit af stjerner ("+d.rating_count+" givet)":"gennemsnit af stjerner (ingen endnu)")+tile(d.damaged,"stk. skadet under vejs")+(d.lost?tile(d.lost,"stk. mistet"):"")+`<h3>Modeller</h3>${rows||'<div class="mut">Intet udstyr oprettet endnu.</div>'}<button class="btn alt" onclick="statsRefresh()">Opdatér</button><button class="btn" onclick="shopExport()">Hent Excel</button>`;
   }
-  const _vw2=view;view=function(){return S.live&&S.role=="Skiforretning"&&S.tab=="dash"?shopDash():_vw2()};
+  const _vw2=view;view=function(){if(S.live&&S.role=="Skiforretning"&&S.tab=="top")return `<h2>🏆 Top 5</h2>`+lbCard();return S.live&&S.role=="Skiforretning"&&S.tab=="dash"?shopDash():_vw2()};
 
 
 
@@ -920,7 +920,7 @@
     return `<div class="card"><h3>🏆 ${tr("Top 5 på tværs af butikker")}</h3><div class="mut">${tr("Hvem har de mest lånte og de bedst bedømte modeller? En model skal have mindst 3 bedømmelser for at komme med på listen over bedst bedømte.")}</div>${S.lbErr?`<div class="mut" style="color:var(--acc)">${esc(S.lbErr)}</div>`:""}${!d&&!S.lbErr?`<div class="mut">${tr("Henter …")}</div>`:""}${d?`<div class="chips" style="margin-top:10px">${ks.map(x=>`<button class="chip ${x.kind==S.lbk?"on":""}" onclick="S.lbk='${x.kind}';render()">${kIc(x.kind)} ${x.kind}</button>`).join("")}</div>${k?`<h3 style="margin-top:6px">${tr("Mest lånte")}</h3>${lbRows(k.loans,d.mine,"loans")}<h3 style="margin-top:14px">${tr("Højest bedømte")}</h3>${lbRows(k.rated,d.mine,"rated")}`:`<div class="mut">${tr("Ingen data endnu.")}</div>`}<button class="btn alt" onclick="S.lb=undefined;render()">${tr("Opdater")}</button>`:""}</div>`};
   window.lbOpen=function(){S.lb=undefined;S.modal={lbm:1};render()};
   // Kommentarer på butikkens overblik og et felt hos arrangøren
-  const _sd=shopDash;shopDash=function(){const h=_sd();return h+lbCard()+`<button class="btn alt" onclick="cmOpen()">💬 ${tr("Se kommentarer")}</button>`};
+  const _sd=shopDash;shopDash=function(){const h=_sd();return h+`<button class="btn alt" onclick="cmOpen()">💬 ${tr("Se kommentarer")}</button>`};
 
   // Genskab login ved genindlæsning
   sb.auth.getSession().then(r=>{if(r.data&&r.data.session){if(!navigator.onLine&&restoreSnap(r.data.session.user.id))return;afterLogin({mode:"restore"}).then(()=>flushQ())}else render()});
