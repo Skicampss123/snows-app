@@ -117,7 +117,7 @@
   }
 
   const _lo=logout;
-  logout=async function(){try{if(S.sup)await sb.rpc("platform_leave");await sb.auth.signOut()}catch(e){}S.pc=[];S.sup=false;S.liveUid=null;emptyState();S.liveCampId=null;_lo()};
+  logout=async function(){rtStop();try{if(S.sup)await sb.rpc("platform_leave");await sb.auth.signOut()}catch(e){}S.pc=[];S.sup=false;S.liveUid=null;emptyState();S.liveCampId=null;_lo()};
 
   // Gem støvle og Z i databasen
   async function saveProfDb(){
@@ -509,13 +509,31 @@
   // Hold tallene friske: hent igen hvert 20. sekund, når intet er under redigering
   function dirty(){return SPEC.some(sp=>{if(!sp.can())return false;const prev=LAST[sp.n]||new Map();return sp.rows().some(r=>prev.get(r[sp.key])!==rowJson(r))})}
   const sig=()=>JSON.stringify([S.skilist.map(x=>[x.id,x.st,x.bad,x.by]),S.pending,S.ski.map(x=>[x.id,x.st,x.r]),S.ws.map(x=>x.t),S.news.length,S.prog.length]);
-  setInterval(async()=>{
-    if(document.visibilityState!="visible"||!S.liveUid||!S.liveCampId||S.sup&&false)return;
-    if(S.modal||syncBusy||dirty())return;
-    const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
+  // Realtid: databasen bumper camp_pulse, når noget i campen ændres. Appen lytter og henter straks nyt.
+  let lastRef=Date.now(),needRef=false,rtCh=null,rtCid=null,rtOk=false,rtT=null;
+  async function refreshNow(){
+    if(document.visibilityState!="visible"||!S.liveUid||!S.liveCampId)return false;
+    const a=document.activeElement;
+    if(S.modal||syncBusy||dirty()||(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))){needRef=true;return false}
+    needRef=false;lastRef=Date.now();
     await flushQ();
-    const b=sig();await loadCampData(true);if(sig()!==b)render();saveSnap();
-  },20000);
+    const b=sig();await loadCampData(true);if(sig()!==b)render();saveSnap();return true}
+  function rtKick(){clearTimeout(rtT);rtT=setTimeout(async()=>{if(!(await refreshNow())&&S.liveUid)rtT=setTimeout(rtKick,2000)},700)}
+  function rtStop(){try{if(rtCh&&sb.removeChannel)sb.removeChannel(rtCh)}catch(e){}rtCh=null;rtCid=null;rtOk=false}
+  function rtStart(){
+    if(typeof sb.channel!="function")return;
+    if(!S.liveUid||!S.liveCampId||S.sup){if(rtCh)rtStop();return}
+    if(rtCh&&rtCid==S.liveCampId)return;
+    if(rtCh)rtStop();
+    rtCid=S.liveCampId;
+    try{rtCh=sb.channel("pulse-"+rtCid).on("postgres_changes",{event:"*",schema:"public",table:"camp_pulse",filter:"camp_id=eq."+rtCid},()=>rtKick())
+      .subscribe(st=>{rtOk=(st=="SUBSCRIBED");if(rtOk)rtKick()})}catch(e){rtCh=null}}
+  window.rtIsOn=()=>rtOk;
+  const _lcdRt=loadCampData;loadCampData=async function(q){const x=await _lcdRt(q);try{rtStart()}catch(e){}return x};
+  // Reserve: hent også med jævne mellemrum (hvert 20. sek. uden realtid, hvert minut med)
+  setInterval(()=>{rtStart();if(rtOk&&!needRef&&Date.now()-lastRef<60000)return;refreshNow()},20000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="visible"&&S.liveUid){rtStart();if(rtOk)rtKick()}});
+  window.addEventListener("online",()=>{if(S.liveUid)rtKick()});
 
 
   // ───── Kø til handlinger uden dækning ─────
