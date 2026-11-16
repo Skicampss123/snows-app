@@ -349,7 +349,7 @@
     S.ev=(ws.data||[]).filter(x=>x.kind=="Event"&&x.day).map(x=>({_id:x.id,t:x.title,tm:x.day+" "+hhmm(x.start_time)}));
     const shopName=id=>{const z=S.shops.find(q=>q._id==id);return z?z.n:""};
     const _prevOut=S._seen?new Set((S.skilist||[]).filter(x=>x.st=="ude").map(x=>x.id)):null;
-    S.skilist=(sk.data||[]).map(x=>({_id:x.id,id:x.code,sh:shopName(x.shop_id),br:x.brand,m:x.model,k:x.kind||"Ski",sz:x.size||"",l:x.length_cm==null?"–":String(x.length_cm),r:x.radius_m==null?"–":String(x.radius_m),b:x.width_mm==null?"–":String(x.width_mm),lv:x.level||"",st:x.status=="ude"?"ude":"inde",bad:x.status=="skadet"?"Skadet":x.status=="mistet"?"Mistet":null,badNote:x.note||"",by:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).name||"",bo:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).boot_mm||"",zv:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).z_value||"",_hand:!!x.handed_in_at,_lent:x.lent_to}));
+    S.skilist=(sk.data||[]).map(x=>({_id:x.id,id:x.code,sh:shopName(x.shop_id),br:x.brand,m:x.model,k:x.kind||"Ski",sz:x.size||"",l:x.length_cm==null?"–":String(x.length_cm),r:x.radius_m==null?"–":String(x.radius_m),b:x.width_mm==null?"–":String(x.width_mm),lv:x.level||"",st:x.status=="ude"?"ude":"inde",bad:x.status=="skadet"?"Skadet":x.status=="mistet"?"Mistet":null,badNote:x.note||"",by:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).name||"",la:x.lent_at||"",bo:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).boot_mm||"",zv:((bor.data||[]).find(b=>b.ski_id==x.id)||{}).z_value||"",_hand:!!x.handed_in_at,_lent:x.lent_to}));
     if(_prevOut&&isShop()){S.skilist.filter(x=>x.st=="ude"&&x.sh==S.shop&&!_prevOut.has(x.id)).slice(0,3).forEach(x=>{if(x.k&&x.k!="Ski")return;toast("Nyt udlån: "+(x.by||"en deltager")+" – "+x.br+" "+x.m+". "+setupTxt(x,1))})}
     S._seen=true;
     S.pending=S.skilist.filter(x=>x._hand&&(isOrg()||(isShop()&&x.sh==S.shop)||(S.role=="Deltager"&&x._lent==S.liveUid))).map(x=>x.id);
@@ -489,7 +489,7 @@
   // Butikkens aflevering: rigtige udlån
   const _vw3=view;view=function(){
     if(S.live&&S.role=="Skiforretning"&&S.tab=="shop"){
-      const out=S.skilist.filter(x=>!x.gone&&x.sh==S.shop&&x.st=="ude").sort((a,b)=>(S.pending.includes(b.id)?1:0)-(S.pending.includes(a.id)?1:0));
+      const out=S.skilist.filter(x=>!x.gone&&x.sh==S.shop&&x.st=="ude").sort((a,b)=>((S.pending.includes(b.id)?1:0)-(S.pending.includes(a.id)?1:0))||((outTxt(b)||{m:0}).m-(outTxt(a)||{m:0}).m));
       return `<h2>${t("shopTitle")}</h2>${scanRetCard()}<h3>Udlånt lige nu (${out.length})</h3>${out.length?out.map(x=>`<div class="card"><h3>${esc(x.br)} ${esc(x.m)}</h3><div class="mut">${esc(x.id)} · ${x.by?esc(x.by):"ukendt låner"}${S.pending.includes(x.id)?" · <b>melder afleveret</b>":""}</div>${setupBox(x)}<button class="btn ${S.pending.includes(x.id)?"ok":"alt"}" onclick="done('${esc(x.id)}')">${t("confirm")}</button></div>`).join(""):`<p class="mut">Intet af jeres udstyr er ude.</p>`}${shopRetCard()}`;
     }
     return _vw3();
@@ -723,7 +723,7 @@
   const _vw4=view;view=function(){
     let h=_vw4();
     if(!S.live||typeof h!="string")return h;
-    if(S.role=="Deltager"&&S.tab=="home")h=pushCard()+h;
+    if(S.role=="Deltager"&&S.tab=="home")h=pushCard()+msgCard()+h;
     if(S.role=="Deltager"&&S.tab=="info")h+=`<div class="card"><h3>${esc(tr("Dine oplysninger"))}</h3>${legalLinks()}</div>`;
     if(/delAcc\(\)">Slet min konto<\/button>/.test(h))h=h.replace(/(<button[^>]*delAcc\(\)">Slet min konto<\/button>)/,`<button class="btn alt" onclick="myData()">${esc(tr("Hent mine data"))}</button>$1`).replace(/(<\/div>`?)$/,"$1");
     return h;
@@ -866,7 +866,10 @@
     if(x.zv)parts.push((short?"":tr("Indstil bindingen til")+" ")+"Z "+nz(x.zv));
     if(x.bo)parts.push((short?"":tr("Støvlestørrelse")+" ")+(short?"støvle ":"")+x.bo+" mm");
     return parts.length?parts.join(" · "):tr("Støvlestørrelse og Z-værdi er ikke udfyldt endnu.")};
-  window.setupBox=function(x){const t=setupTxt(x);if(!t||!x.by)return "";const ok=x.zv||x.bo;return `<div style="margin:8px 0;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,${ok?"var(--acc)":"var(--mut)"} 14%,transparent)"><b>${ok?"🔧 ":""}${esc(t)}</b></div>`};
+  const LONG_H=8;
+  window.outTxt=function(x){if(x.st!="ude"||!x.la)return null;const m=Math.max(0,Math.floor((Date.now()-Date.parse(x.la))/60000)),h=Math.floor(m/60),mm=m%60;return {m,txt:(h?h+" t ":"")+mm+" min",long:m>=LONG_H*60}};
+  window.setupBox=function(x){const o=outTxt(x),t=x.by?setupTxt(x):"";if(!t&&!o)return "";const ok=x.zv||x.bo;
+    return (o?`<div class="mut" style="margin:6px 0">⏱ ${tr("Ude i")} <b>${o.txt}</b>${o.long?` <span class="tag w">${tr("usædvanligt længe")}</span>`:""}</div>`:"")+(t?`<div style="margin:8px 0;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,${ok?"var(--acc)":"var(--mut)"} 14%,transparent)"><b>${ok?"🔧 ":""}${esc(t)}</b></div>`:"")};
   // ───── Fejllog: telefonerne melder uventede fejl til platformen ─────
   (function(){
     const seen=new Set();let n=0;
@@ -928,6 +931,52 @@
     const k=ks.find(x=>x.kind==S.lbk);
     return `<div class="card"><h3>🏆 ${tr("Top 5 på tværs af butikker")}</h3><div class="mut">${tr("Hvem har de mest lånte og de bedst bedømte modeller? En model skal have mindst 3 bedømmelser for at komme med på listen over bedst bedømte.")}</div>${S.lbErr?`<div class="mut" style="color:var(--acc)">${esc(S.lbErr)}</div>`:""}${!d&&!S.lbErr?`<div class="mut">${tr("Henter …")}</div>`:""}${d?`<div class="chips" style="margin-top:10px">${ks.map(x=>`<button class="chip ${x.kind==S.lbk?"on":""}" onclick="S.lbk='${x.kind}';render()">${kIc(x.kind)} ${x.kind}</button>`).join("")}</div>${k?`<h3 style="margin-top:6px">${tr("Mest lånte")}</h3>${lbRows(k.loans,d.mine,"loans")}<h3 style="margin-top:14px">${tr("Højest bedømte")}</h3>${lbRows(k.rated,d.mine,"rated")}`:`<div class="mut">${tr("Ingen data endnu.")}</div>`}<button class="btn alt" onclick="S.lb=undefined;render()">${tr("Opdater")}</button>`:""}</div>`};
   window.lbOpen=function(){S.lb=undefined;S.modal={lbm:1};render()};
+  // ───── Små detaljer: lyd, vibration, træk for at opdatere, minut-opdatering ─────
+  let AC=null;
+  window.fx=function(kind){try{if(navigator.vibrate)navigator.vibrate(kind=="err"?[80,60,80]:40)}catch(e){}
+    try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type="sine";o.frequency.value=kind=="err"?220:kind=="ok2"?660:880;g.gain.value=.08;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(kind=="err"?.25:.12))}catch(e){}};
+  const _toast=toast;toast=function(m){try{const s=String(m||"");if(/✓\s*$/.test(s))fx("ok");else if(/kunne ikke|fejl|ikke ledig|allerede/i.test(s))fx("err")}catch(e){}return _toast(m)};
+  (function(){let y0=null,dy=0,ind=null;
+    const mainEl=e=>{const m=e.target&&e.target.closest&&e.target.closest("main");return m&&m.scrollTop<=0&&S.live&&S.liveUid&&!S.modal?m:null};
+    document.addEventListener("touchstart",e=>{y0=mainEl(e)?e.touches[0].clientY:null;dy=0},{passive:true});
+    document.addEventListener("touchmove",e=>{if(y0==null)return;dy=e.touches[0].clientY-y0;if(dy>10){if(!ind){ind=document.createElement("div");ind.style.cssText="position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:8;background:var(--card);box-shadow:var(--sh);border-radius:30px;padding:8px 16px;font:600 14px system-ui;color:var(--mut)";document.body.appendChild(ind)}ind.textContent=dy>80?"↻ "+tr("Slip for at opdatere"):"↓ "+tr("Træk for at opdatere");ind.style.opacity=Math.min(1,dy/60)}},{passive:true});
+    document.addEventListener("touchend",async()=>{const go=y0!=null&&dy>80;y0=null;if(ind){ind.remove();ind=null}if(go){try{await loadCampData(true);render();toast(tr("Opdateret")+" ✓")}catch(e){}}});
+  })();
+  setInterval(()=>{if(S.live&&S.liveUid&&!S.modal&&(S.role=="Skiforretning"||S.role=="Arrangør")&&(S.tab=="shop"||S.tab=="myski")){const a=document.activeElement;if(!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)))render()}},60000);
+  // ───── Besked til en gruppe ─────
+  window.gmOpen=async function(){S.modal={gm:1,aud:"all",ref:"",t:"",x:"",sent:null};render();const r=await sb.rpc("sent_messages");if(S.modal&&S.modal.gm){S.modal.sent=r.data||[];render()}};
+  function gmKeep(){const m=S.modal;if(!m||!m.gm)return;const g=id=>{const e=document.getElementById(id);return e?e.value:null};const a=g("gm_a"),r=g("gm_r"),t=g("gm_t"),x=g("gm_x");if(a!=null)m.aud=a;if(r!=null)m.ref=r;if(t!=null)m.t=t;if(x!=null)m.x=x}
+  window.gmAud=function(){gmKeep();S.modal.ref="";render()};
+  window.gmSend=async function(){gmKeep();const m=S.modal;if(m.busy)return;
+    if(!(m.t||"").trim()){toast(tr("Skriv en overskrift."));return}
+    if((m.aud=="ws"||m.aud=="shop")&&!m.ref){toast(tr("Vælg et hold eller en butik."));return}
+    m.busy=true;render();
+    const r=await sb.rpc("send_group_message",{p_title:m.t,p_body:m.x||null,p_audience:m.aud,p_ref:m.ref||null});
+    if(r.error){m.busy=false;toast(errm(r.error));render();return}
+    const d=r.data||{};S.modal=null;render();
+    let pushTxt="";
+    try{const q=await sb.functions.invoke("send-push",{body:{title:m.t,body:m.x||"",user_ids:d.user_ids||[]}});
+      if(q.error){pushTxt=" ("+tr("push kunne ikke sendes")+")"}else{const n=q.data&&typeof q.data.sent=="number"?q.data.sent:null;pushTxt=n>0?" · "+tr("Push-besked sendt til")+" "+n+" "+tr("enheder"):" · "+tr("ingen telefoner har slået push til")}}catch(e){pushTxt=" ("+tr("push kunne ikke sendes")+")"}
+    toast(tr("Sendt til")+" "+d.count+" "+tr("deltagere")+pushTxt+" ✓")};
+  async function msgLoad(){if(S.role!="Deltager"||!S.liveUid)return;const r=await sb.rpc("my_messages");if(!r.error){S.msgs=r.data||[]}}
+  const _lcd=loadCampData;loadCampData=async function(q){const x=await _lcd(q);try{await msgLoad()}catch(e){}return x};
+  const seenKey=()=>"snows_msgseen_"+S.liveUid;
+  const seenAt=()=>{try{return localStorage.getItem(seenKey())||""}catch(e){return ""}};
+  const fmtD=v=>new Date(v).toLocaleString("da-DK",{weekday:"short",hour:"2-digit",minute:"2-digit"});
+  window.msgCard=function(){const ms=S.msgs||[];if(!ms.length)return "";const sa=seenAt(),nw=ms.filter(m=>m.created_at>sa).length;
+    return `<div class="card"><div class="row"><h3>📩 ${tr("Beskeder")}</h3>${nw?`<span class="tag w">${nw} ${tr("nye")}</span>`:""}</div>${ms.slice(0,2).map(m=>`<div style="border-top:1px solid var(--line);padding:8px 0"><b>${esc(m.title)}</b>${m.body?`<div class="mut">${esc(m.body)}</div>`:""}<div class="mut" style="font-size:12px">${fmtD(m.created_at)}</div></div>`).join("")}${ms.length>2?`<button class="btn alt" onclick="msgAll()">${tr("Se alle beskeder")} (${ms.length})</button>`:`<button class="chip" onclick="msgSeen()">${tr("Markér som læst")}</button>`}</div>`};
+  window.msgSeen=function(){try{localStorage.setItem(seenKey(),new Date().toISOString())}catch(e){}render()};
+  window.msgAll=function(){S.modal={msgs:1};msgSeen()};
+  const _md5=modal;modal=function(){const m=S.modal;
+    if(m&&m.msgs){return `<div class="modal"><div class="card" style="max-height:88vh;overflow:auto"><h3>📩 ${tr("Beskeder")}</h3>${(S.msgs||[]).map(x=>`<div style="border-top:1px solid var(--line);padding:8px 0"><b>${esc(x.title)}</b>${x.body?`<div class="mut">${esc(x.body)}</div>`:""}<div class="mut" style="font-size:12px">${fmtD(x.created_at)}</div></div>`).join("")}<button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button></div></div>`}
+    if(m&&m.gm){const aud=m.aud,wsOpts=(S.ws||[]).filter(w=>w._id).map(w=>`<option value="${w._id}" ${m.ref==w._id?"selected":""}>${esc(w.t)} · ${esc(w.tm)}</option>`).join(""),shOpts=(S.shops||[]).filter(s=>s._id).map(s=>`<option value="${s._id}" ${m.ref==s._id?"selected":""}>${esc(s.n)}</option>`).join("");
+      return `<div class="modal"><div class="card" style="max-height:90vh;overflow:auto"><h3>${tr("Besked til en gruppe")}</h3><div class="mut">${tr("Beskeden vises i deltagernes app og sendes som push til dem, der har slået beskeder til.")}</div>
+      <select id="gm_a" onchange="gmAud()"><option value="all" ${aud=="all"?"selected":""}>${tr("Alle deltagere")}</option><option value="ws" ${aud=="ws"?"selected":""}>${tr("Et bestemt hold")}</option><option value="out" ${aud=="out"?"selected":""}>${tr("Alle med udstyr ude")}</option><option value="shop" ${aud=="shop"?"selected":""}>${tr("Lånere hos en butik")}</option></select>
+      ${aud=="ws"?`<select id="gm_r"><option value="">${tr("Vælg hold")}</option>${wsOpts}</select>`:""}${aud=="shop"?`<select id="gm_r"><option value="">${tr("Vælg butik")}</option>${shOpts}</select>`:""}
+      <input id="gm_t" maxlength="120" placeholder="${tr("Overskrift")}" value="${esc(m.t||"")}"><textarea id="gm_x" rows="4" maxlength="1000" placeholder="${tr("Besked")}">${esc(m.x||"")}</textarea>
+      <button class="btn" onclick="gmSend()" ${m.busy?"disabled":""}>${m.busy?tr("Sender …"):tr("Send besked")}</button><button class="btn alt" onclick="S.modal=null;render()">${tr("Luk")}</button>
+      ${(m.sent||[]).length?`<h3 style="margin-top:16px">${tr("Sendt før")}</h3>${m.sent.slice(0,6).map(s=>`<div class="mut" style="border-top:1px solid var(--line);padding:6px 0"><b>${esc(s.title)}</b><br>${esc(s.label||"")} · ${s.recipients} ${tr("modtagere")} · ${fmtD(s.created_at)}</div>`).join("")}`:""}</div></div>`}
+    return _md5()};
   // Kommentarer på butikkens overblik og et felt hos arrangøren
   const _sd=shopDash;shopDash=function(){const h=_sd();return h+`<button class="btn alt" onclick="cmOpen()">💬 ${tr("Se kommentarer")}</button>`};
 

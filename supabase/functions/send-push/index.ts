@@ -1,4 +1,4 @@
-// Sender en push-besked til alle i arrangørens camp. Kun arrangøren må kalde den.
+// Sender en push-besked til alle i arrangørens camp, eller kun til de brugere, der er nævnt i user_ids. Kun arrangøren må kalde den.
 // Hemmeligheder (Edge Functions → Secrets): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
@@ -16,10 +16,12 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service);
     const { data: p } = await admin.from("profiles").select("camp_id, role").eq("id", user.id).maybeSingle();
     if (!p || p.role !== "Arrangør") return json({ error: "Kun arrangøren kan sende beskeder." }, 403);
-    const { title, body } = await req.json();
+    const { title, body, user_ids } = await req.json();
     if (!title || String(title).length > 120) return json({ error: "Skriv en overskrift." }, 400);
     webpush.setVapidDetails(Deno.env.get("VAPID_SUBJECT")!, Deno.env.get("VAPID_PUBLIC_KEY")!, Deno.env.get("VAPID_PRIVATE_KEY")!);
-    const { data: subs } = await admin.from("push_subs").select("id, endpoint, p256dh, auth").eq("camp_id", p.camp_id);
+    let q = admin.from("push_subs").select("id, endpoint, p256dh, auth").eq("camp_id", p.camp_id);
+    if (Array.isArray(user_ids)) q = q.in("user_id", user_ids.slice(0, 2000).map(String));
+    const { data: subs } = await q;
     let sent = 0; const dead: number[] = [];
     await Promise.all((subs ?? []).map(async (s) => {
       try {
