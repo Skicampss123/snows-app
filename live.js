@@ -933,8 +933,13 @@
   window.lbOpen=function(){S.lb=undefined;S.modal={lbm:1};render()};
   // ───── Små detaljer: lyd, vibration, træk for at opdatere, minut-opdatering ─────
   let AC=null;
-  window.fx=function(kind){try{if(navigator.vibrate)navigator.vibrate(kind=="err"?[80,60,80]:40)}catch(e){}
-    try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type="sine";o.frequency.value=kind=="err"?220:kind=="ok2"?660:880;g.gain.value=.08;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(kind=="err"?.25:.12))}catch(e){}};
+  window.fx=function(kind){try{if(navigator.vibrate)navigator.vibrate(kind=="err"?[60,70,60]:30)}catch(e){}
+    try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state=="suspended")AC.resume();
+      const t0=AC.currentTime+.01,notes=kind=="err"?[[392,0],[330,.14]]:kind=="ok2"?[[659,0]]:[[784,0],[1047,.11]];
+      const master=AC.createGain();master.gain.value=.5;master.connect(AC.destination);
+      notes.forEach(([f,d])=>{[[1,1],[2,.12]].forEach(([m,a])=>{const o=AC.createOscillator(),g=AC.createGain();o.type="sine";o.frequency.value=f*m;
+        const t=t0+d,pk=.16*a;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(pk,t+.012);g.gain.exponentialRampToValueAtTime(0.0001,t+(kind=="err"?.42:.34));
+        o.connect(g);g.connect(master);o.start(t);o.stop(t+.45)})})}catch(e){}};
   const _toast=toast;toast=function(m){try{const s=String(m||"");if(/✓\s*$/.test(s))fx("ok");else if(/kunne ikke|fejl|ikke ledig|allerede/i.test(s))fx("err")}catch(e){}return _toast(m)};
   (function(){let y0=null,dy=0,ind=null;
     const mainEl=e=>{const m=e.target&&e.target.closest&&e.target.closest("main");return m&&m.scrollTop<=0&&S.live&&S.liveUid&&!S.modal?m:null};
