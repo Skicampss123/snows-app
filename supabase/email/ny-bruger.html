@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="da" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Velkommen til Snow’s</title>
+<style>
+  body{margin:0;padding:0;background:#F2F5F9}
+  a{color:#E8532B}
+  @media (max-width:560px){.card{border-radius:0 !important}.pad{padding:28px 22px !important}.code{font-size:30px !important;letter-spacing:6px !important}}
+  @media (prefers-color-scheme:dark){
+    body,.bg{background:#0A141F !important}
+    .card{background:#14222F !important;border-color:#223545 !important}
+    .ink{color:#F1F6FA !important}.mut{color:#93A8BA !important}
+    .codebox{background:#1B2D3D !important;border-color:#223545 !important}
+    .code{color:#FFFFFF !important}
+    .rule{border-top-color:#223545 !important}
+  }
+</style>
+</head>
+<body class="bg" style="margin:0;padding:0;background:#F2F5F9;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">Velkommen til Snow’s. Din kode er {{ .Token }}.&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg" style="background:#F2F5F9;">
+<tr><td align="center" style="padding:32px 14px;">
+  <table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" class="card" style="width:100%;max-width:520px;background:#FFFFFF;border:1px solid #E3EAF1;border-radius:20px;overflow:hidden;">
+    <tr><td style="background:#0E2236;background-image:linear-gradient(135deg,#0E2236 0%,#17405F 100%);padding:26px 32px;">
+      <span style="font:800 26px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#FFFFFF;letter-spacing:-0.02em;">Snow&rsquo;s</span>
+    </td></tr>
+    <tr><td style="height:4px;background:#E8532B;font-size:0;line-height:0;">&nbsp;</td></tr>
+    <tr><td class="pad" style="padding:34px 32px 8px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <h1 class="ink" style="margin:0 0 12px 0;font-size:24px;line-height:1.25;color:#0E2236;font-weight:800;">Velkommen til Snow’s</h1>
+      <p class="mut" style="margin:0 0 22px 0;font-size:16px;line-height:1.55;color:#62758A;">Din bruger er næsten klar. Skriv denne kode i appen for at bekræfte din e-mail og komme i gang.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" class="codebox" style="background:#F2F5F9;border:1px solid #E3EAF1;border-radius:14px;padding:22px 10px;">
+        <div class="code" style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:38px;line-height:1.1;font-weight:700;letter-spacing:10px;color:#0E2236;padding-left:10px;">{{ .Token }}</div>
+      </td></tr></table>
+      <p class="mut" style="margin:22px 0 0 0;font-size:15px;line-height:1.55;color:#62758A;">Koden kan kun bruges én gang og udløber om 1 time. Skal du have en ny, beder du bare om en ny i appen.</p>
+      <p class="mut" style="margin:14px 0 0 0;font-size:15px;line-height:1.55;color:#62758A;"><strong class="ink" style="color:#0E2236;">Del aldrig koden med andre.</strong> Har du ikke selv bedt om den, kan du ignorere denne mail. Der sker ikke noget, hvis du lader den ligge.</p>
+    </td></tr>
+    <tr><td class="pad" style="padding:22px 32px 30px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="rule" style="border-top:1px solid #E3EAF1;padding-top:18px;">
+        <p class="mut" style="margin:0 0 8px 0;font-size:13px;line-height:1.5;color:#62758A;"><strong>English:</strong> your Snow&rsquo;s login code is shown above. Enter it in the app. It can be used once and expires in 1 hour. If you did not ask for it, ignore this email.</p>
+        <p class="mut" style="margin:0;font-size:13px;line-height:1.5;color:#62758A;"><strong>Deutsch:</strong> Dein Snow&rsquo;s-Anmeldecode steht oben. Gib ihn in der App ein. Er ist einmal g&uuml;ltig und l&auml;uft in 1 Stunde ab. Wenn du ihn nicht angefordert hast, ignoriere diese E-Mail.</p>
+      </td></tr></table>
+    </td></tr>
+  </table>
+  <table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px;">
+    <tr><td align="center" class="mut" style="padding:18px 20px 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#8A9BAD;">Denne mail er sendt til {{ .Email }}, fordi den blev skrevet i Snow&rsquo;s.<br>Den er sendt automatisk. Du kan ikke svare p&aring; den.</td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>
